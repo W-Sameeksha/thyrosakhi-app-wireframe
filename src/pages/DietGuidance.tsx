@@ -1,5 +1,6 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Check, X } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 
@@ -37,13 +38,32 @@ const dontsTE = [
 
 const DietGuidance = () => {
   const { t, language } = useLanguage();
+  const location = useLocation();
   const dos = language === "te" ? dosTE : dosEN;
   const donts = language === "te" ? dontsTE : dontsEN;
+  const dietaryRecommendations =
+    (location.state as { dietaryRecommendations?: string[] } | null)?.dietaryRecommendations ?? [];
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <PageHeader titleKey="diet.title" />
       <div className="px-5 pt-4 space-y-6">
+        {dietaryRecommendations.length > 0 && (
+          <section className="bg-primary/5 p-4 rounded-2xl space-y-3">
+            <p className="text-sm text-foreground">
+              Based on your risk level, these dietary suggestions may help support thyroid health.
+            </p>
+            <ul className="space-y-2">
+              {dietaryRecommendations.map((recommendation, index) => (
+                <li key={`${recommendation}-${index}`} className="flex items-start gap-2 text-sm text-foreground">
+                  <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                  <span>{recommendation}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Do's */}
         <section>
           <h2 className="text-lg font-bold text-success mb-3">{t("diet.dos")}</h2>
