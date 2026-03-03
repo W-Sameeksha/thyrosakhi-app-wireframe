@@ -77,9 +77,6 @@ const VoiceTest = () => {
   const [analysisResult, setAnalysisResult] = useState<VoiceAnalysisResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  const [fatigue, setFatigue] = useState(false);
-  const [weightGain, setWeightGain] = useState(false);
-  const [hairFall, setHairFall] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
 
@@ -129,9 +126,6 @@ const VoiceTest = () => {
       try {
         const formData = new FormData();
         formData.append("file", wavBlob, "voice.wav");
-        formData.append("fatigue", String(fatigue));
-        formData.append("weight_gain", String(weightGain));
-        formData.append("hair_fall", String(hairFall));
         formData.append("latitude", String(coordinatesRef.current.latitude));
         formData.append("longitude", String(coordinatesRef.current.longitude));
 
@@ -176,7 +170,7 @@ const VoiceTest = () => {
         setAnalyzing(false);
       }
     },
-    [fatigue, weightGain, hairFall, navigate]
+    [navigate]
   );
 
   const stopRecording = useCallback(() => {
@@ -332,37 +326,6 @@ const VoiceTest = () => {
         ) : (
           <p className="text-muted-foreground text-body">{t("voice.tapToRecord")}</p>
         )}
-
-        <div className="w-full max-w-sm bg-muted rounded-xl p-4 space-y-3">
-          <p className="font-semibold text-foreground">Symptoms</p>
-          <label className="flex items-center justify-between text-sm text-foreground">
-            <span>Fatigue</span>
-            <input
-              type="checkbox"
-              checked={fatigue}
-              onChange={(event) => setFatigue(event.target.checked)}
-              disabled={recording || analyzing}
-            />
-          </label>
-          <label className="flex items-center justify-between text-sm text-foreground">
-            <span>Weight Gain</span>
-            <input
-              type="checkbox"
-              checked={weightGain}
-              onChange={(event) => setWeightGain(event.target.checked)}
-              disabled={recording || analyzing}
-            />
-          </label>
-          <label className="flex items-center justify-between text-sm text-foreground">
-            <span>Hair Fall</span>
-            <input
-              type="checkbox"
-              checked={hairFall}
-              onChange={(event) => setHairFall(event.target.checked)}
-              disabled={recording || analyzing}
-            />
-          </label>
-        </div>
 
         {analysisResult && (
           <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4">
