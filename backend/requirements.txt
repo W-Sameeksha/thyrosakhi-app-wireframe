@@ -4,3 +4,5 @@ librosa
 numpy
 scipy
 soundfile
+requests
+opencv-python

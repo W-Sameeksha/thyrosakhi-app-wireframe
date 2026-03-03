@@ -6,6 +6,7 @@ import { Mic } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 
 const MAX_RECORD_SECONDS = 10;
+const ANALYSIS_TIMEOUT_MS = 120000;
 
 type VoiceAnalysisResponse = {
   average_pitch: number;
@@ -134,10 +135,18 @@ const VoiceTest = () => {
         formData.append("latitude", String(coordinatesRef.current.latitude));
         formData.append("longitude", String(coordinatesRef.current.longitude));
 
-        const response = await fetch("http://localhost:5000/analyze-voice", {
-          method: "POST",
-          body: formData,
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
+        let response: Response;
+        try {
+          response = await fetch("http://localhost:5000/analyze-voice", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
 
         const data = await response.json();
 
@@ -156,7 +165,12 @@ const VoiceTest = () => {
           });
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Analysis failed";
+        const message =
+          error instanceof DOMException && error.name === "AbortError"
+            ? "Analysis timed out. Please try again."
+            : error instanceof Error
+            ? error.message
+            : "Analysis failed";
         setErrorText(message);
       } finally {
         setAnalyzing(false);
@@ -314,7 +328,7 @@ const VoiceTest = () => {
             {timeLeft} {t("voice.timeLeft")}
           </p>
         ) : analyzing ? (
-          <p className="text-foreground font-semibold text-xl">Analyzing voice...</p>
+          <p className="text-foreground font-semibold text-xl">Analyzing voice... this may take a moment.</p>
         ) : (
           <p className="text-muted-foreground text-body">{t("voice.tapToRecord")}</p>
         )}

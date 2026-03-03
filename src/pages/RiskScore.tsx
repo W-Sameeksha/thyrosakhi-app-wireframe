@@ -1,15 +1,35 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader";
 
+type NeckAnalysisResult = {
+  image_result: string;
+  symmetry_score: number;
+  visible_asymmetry: boolean;
+  swelling_flag: boolean;
+};
+
 const RiskScore = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+  const neckAnalysis = (location.state as { neckAnalysis?: NeckAnalysisResult } | null)?.neckAnalysis;
 
-  // Mock score
-  const score = 72;
+  const score = (() => {
+    if (!neckAnalysis) {
+      return 72;
+    }
+
+    const normalizedFromSymmetry = 100 - Math.round(neckAnalysis.symmetry_score * 2.5);
+    const asymmetryPenalty = neckAnalysis.visible_asymmetry ? 20 : 0;
+    const swellingPenalty = neckAnalysis.swelling_flag ? 15 : 0;
+
+    const computedScore = normalizedFromSymmetry - asymmetryPenalty - swellingPenalty;
+    return Math.min(100, Math.max(0, computedScore));
+  })();
+
   const maxAngle = 180;
   const angle = (score / 100) * maxAngle;
 
