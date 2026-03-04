@@ -17,7 +17,7 @@ ASYMMETRY_THRESHOLD = 20.0
 
 def calculate_final_risk(voice_score: float, symptom_score: float, neck_score: float) -> tuple[float, str]:
     voice_weight = (voice_score / 3) * 0.40
-    symptom_weight = (symptom_score / 3) * 0.35
+    symptom_weight = (symptom_score / 5) * 0.35
     neck_weight = (neck_score / 2) * 0.25
 
     final_score = voice_weight + symptom_weight + neck_weight
@@ -52,15 +52,38 @@ def max_horizontal_width_in_band(edge_image: np.ndarray, start_row: int, end_row
 @app.post("/calculate-risk")
 def calculate_risk() -> tuple:
     data = request.get_json(silent=True) or {}
+    symptoms = data.get("symptoms") or {}
+
+    fatigue = bool(symptoms.get("fatigue", False))
+    weight_change = bool(symptoms.get("weight_change", False))
+    hair_fall = bool(symptoms.get("hair_fall", False))
+    temperature_sensitivity = bool(symptoms.get("temperature_sensitivity", False))
+    irregular_cycles = bool(symptoms.get("irregular_cycles", False))
+
+    symptom_score = 0
+
+    if fatigue:
+        symptom_score += 1
+
+    if weight_change:
+        symptom_score += 1
+
+    if hair_fall:
+        symptom_score += 1
+
+    if temperature_sensitivity:
+        symptom_score += 1
+
+    if irregular_cycles:
+        symptom_score += 1
 
     try:
         voice_score = float(data.get("voice_score"))
-        symptom_score = float(data.get("symptom_score"))
         neck_score = float(data.get("neck_score"))
     except (TypeError, ValueError):
         return jsonify(
             {
-                "error": "voice_score, symptom_score, and neck_score must be numeric values"
+                "error": "voice_score and neck_score must be numeric values"
             }
         ), 400
 
