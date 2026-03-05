@@ -14,6 +14,8 @@ import Processing from "./pages/Processing";
 import RiskScore from "./pages/RiskScore";
 import DietGuidance from "./pages/DietGuidance";
 import PHCSupport from "./pages/PHCSupport";
+import PHCNearby from "./pages/PHCNearby";
+import HealthReport from "./pages/HealthReport";
 import FamilyAlert from "./pages/FamilyAlert";
 import History from "./pages/History";
 import SettingsScreen from "./pages/SettingsScreen";
@@ -38,8 +40,10 @@ const App = () => (
               <Route path="/neck-scan" element={<NeckScan />} />
               <Route path="/processing" element={<Processing />} />
               <Route path="/risk-score" element={<RiskScore />} />
+              <Route path="/health-report" element={<HealthReport />} />
               <Route path="/diet" element={<DietGuidance />} />
               <Route path="/phc" element={<PHCSupport />} />
+              <Route path="/phc-nearby" element={<PHCNearby />} />
               <Route path="/family-alert" element={<FamilyAlert />} />
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<SettingsScreen />} />

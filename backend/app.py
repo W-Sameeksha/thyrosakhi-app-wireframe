@@ -669,5 +669,119 @@ def analyze_neck_video() -> tuple:
             os.remove(temp_path)
 
 
+# Google Places API key - replace with your own key for production
+GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance between two coordinates in kilometers."""
+    import math
+    R = 6371  # Earth's radius in kilometers
+
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    return R * c
+
+
+@app.get("/nearby-clinics")
+def nearby_clinics() -> tuple:
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
+
+    if not lat or not lng:
+        return jsonify({"error": "Missing lat or lng parameters"}), 400
+
+    try:
+        user_lat = float(lat)
+        user_lng = float(lng)
+    except ValueError:
+        return jsonify({"error": "Invalid lat or lng values"}), 400
+
+    # If Google Places API key is configured, use it
+    if GOOGLE_PLACES_API_KEY:
+        try:
+            url = (
+                f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+                f"?location={user_lat},{user_lng}"
+                f"&radius=5000"
+                f"&type=hospital"
+                f"&keyword=clinic%20hospital%20health%20center%20PHC"
+                f"&key={GOOGLE_PLACES_API_KEY}"
+            )
+            response = requests.get(url, timeout=10)
+            data = response.json()
+
+            if data.get("status") == "OK":
+                clinics = []
+                for place in data.get("results", [])[:10]:
+                    place_lat = place.get("geometry", {}).get("location", {}).get("lat")
+                    place_lng = place.get("geometry", {}).get("location", {}).get("lng")
+                    distance = None
+                    if place_lat and place_lng:
+                        distance = haversine_distance(user_lat, user_lng, place_lat, place_lng)
+
+                    clinics.append({
+                        "name": place.get("name", "Unknown"),
+                        "address": place.get("vicinity", "Address not available"),
+                        "rating": place.get("rating", "N/A"),
+                        "distance_km": round(distance, 2) if distance else None,
+                        "place_id": place.get("place_id"),
+                    })
+
+                # Sort by distance
+                clinics.sort(key=lambda x: x.get("distance_km") or 999)
+                return jsonify({"clinics": clinics}), 200
+        except Exception as exc:
+            print(f"Google Places API error: {exc}")
+            # Fall through to mock data
+
+    # Fallback: Return mock clinic data for demo/hackathon purposes
+    mock_clinics = [
+        {
+            "name": "District Primary Health Center",
+            "address": "Main Road, Near Bus Stand",
+            "rating": 4.2,
+            "distance_km": 1.2,
+            "phone": "+91-1234567890",
+        },
+        {
+            "name": "Community Health Center",
+            "address": "Market Street, Town Center",
+            "rating": 4.0,
+            "distance_km": 2.5,
+            "phone": "+91-9876543210",
+        },
+        {
+            "name": "Government General Hospital",
+            "address": "Hospital Road, Medical Complex",
+            "rating": 4.5,
+            "distance_km": 3.8,
+            "phone": "+91-1122334455",
+        },
+        {
+            "name": "Urban Primary Health Center",
+            "address": "Gandhi Nagar, Block B",
+            "rating": 3.8,
+            "distance_km": 4.1,
+            "phone": "+91-5566778899",
+        },
+        {
+            "name": "Thyroid Specialty Clinic",
+            "address": "Medical Lane, Near Railway Station",
+            "rating": 4.7,
+            "distance_km": 4.9,
+            "phone": "+91-9988776655",
+        },
+    ]
+
+    return jsonify({"clinics": mock_clinics}), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -133,7 +133,7 @@ const VoiceTest = () => {
         const timeoutId = window.setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
         let response: Response;
         try {
-          response = await fetch("http://localhost:5000/analyze-voice", {
+          response = await fetch("/analyze-voice", {
             method: "POST",
             body: formData,
             signal: controller.signal,
@@ -169,7 +169,7 @@ const VoiceTest = () => {
           error instanceof DOMException && error.name === "AbortError"
             ? "Analysis timed out. Please try again."
             : error instanceof TypeError
-            ? "Unable to reach analysis server. Please make sure backend is running on http://localhost:5000."
+            ? "Unable to reach analysis server. Please make sure backend is running."
             : error instanceof Error
             ? error.message
             : "Analysis failed";

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -106,6 +107,16 @@ const RiskScore = () => {
   const riskLevel = score >= 70 ? "low" : score >= 40 ? "medium" : "high";
   const riskColor = riskLevel === "low" ? "text-success" : riskLevel === "medium" ? "text-warning" : "text-danger";
 
+  // Automatically redirect to PHC nearby page when risk is high
+  useEffect(() => {
+    if (riskLevel === "high") {
+      const timer = setTimeout(() => {
+        navigate("/phc-nearby", { replace: true });
+      }, 3000); // Show result for 3 seconds before redirecting
+      return () => clearTimeout(timer);
+    }
+  }, [riskLevel, navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader titleKey="risk.title" showBack={false} />
@@ -181,7 +192,7 @@ const RiskScore = () => {
         <Button
           size="lg"
           onClick={() =>
-            navigate("/diet", {
+            navigate("/health-report", {
               state: { riskLevel },
             })
           }

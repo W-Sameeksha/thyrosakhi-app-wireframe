@@ -1,11 +1,81 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Camera, Zap, ZapOff, CheckCircle, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
 import { getNextScreeningRoute, isScreeningLocked, saveNeckResult } from "@/lib/screeningLock";
+
+// Swallow animation component - circle moves down neck every 3 seconds
+const SwallowAnimation = () => {
+  return (
+    <motion.div
+      className="absolute left-1/2 w-4 h-4 -ml-2 rounded-full bg-primary/80 shadow-lg"
+      initial={{ top: "18%", opacity: 0, scale: 0.5 }}
+      animate={{
+        top: ["18%", "35%", "55%"],
+        opacity: [0, 1, 0],
+        scale: [0.5, 1, 0.5],
+      }}
+      transition={{
+        duration: 2,
+        repeat: Infinity,
+        repeatDelay: 1,
+        ease: "easeInOut",
+      }}
+    />
+  );
+};
+
+// Neck guide overlay component
+const NeckGuideOverlay = ({ t }: { t: (key: string) => string }) => {
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Chin area indicator */}
+      <div className="absolute top-[12%] left-1/2 -translate-x-1/2 w-32">
+        <div className="border-2 border-dashed border-yellow-400/60 rounded-full h-10 flex items-center justify-center">
+          <span className="text-yellow-400 text-xs font-medium bg-black/40 px-2 py-0.5 rounded">
+            {t("neck.chinArea")}
+          </span>
+        </div>
+      </div>
+
+      {/* Neck region - main thyroid detection zone */}
+      <div className="absolute top-[24%] left-1/2 -translate-x-1/2 w-28">
+        <div className="border-2 border-primary/70 rounded-xl h-32 flex flex-col items-center justify-center bg-primary/5">
+          <span className="text-primary text-xs font-semibold bg-black/40 px-2 py-0.5 rounded mb-1">
+            {t("neck.neckRegion")}
+          </span>
+          <span className="text-primary/80 text-[10px]">↓ Thyroid Area ↓</span>
+        </div>
+      </div>
+
+      {/* Upper chest indicator */}
+      <div className="absolute top-[58%] left-1/2 -translate-x-1/2 w-40">
+        <div className="border-2 border-dashed border-blue-400/50 rounded-xl h-14 flex items-center justify-center">
+          <span className="text-blue-400 text-xs font-medium bg-black/40 px-2 py-0.5 rounded">
+            {t("neck.upperChest")}
+          </span>
+        </div>
+      </div>
+
+      {/* Swallow animation */}
+      <SwallowAnimation />
+
+      {/* Swallow timing indicator */}
+      <motion.div
+        className="absolute bottom-[25%] left-1/2 -translate-x-1/2"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+      >
+        <span className="text-white text-sm font-bold bg-primary/80 px-3 py-1 rounded-full shadow-lg">
+          {t("neck.swallowNow")} 💧
+        </span>
+      </motion.div>
+    </div>
+  );
+};
 
 const NeckScan = () => {
   const { t } = useLanguage();
@@ -130,7 +200,7 @@ const NeckScan = () => {
       setAnalyzing(true);
       const base64Image = canvas.toDataURL("image/png");
 
-      const response = await fetch("http://localhost:5000/analyze-neck", {
+      const response = await fetch("/analyze-neck", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -171,9 +241,16 @@ const NeckScan = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader titleKey="neck.title" />
-      <div className="flex flex-col items-center px-6 pt-4 gap-5">
-        {/* Camera preview placeholder */}
-        <div className="relative w-full max-w-sm aspect-[3/4] bg-foreground/5 rounded-2xl overflow-hidden border-2 border-dashed border-border flex items-center justify-center">
+      <div className="flex flex-col items-center px-6 pt-4 gap-4">
+        {/* Detailed instructions above camera */}
+        <div className="w-full max-w-sm bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
+          <p className="text-sm text-foreground font-medium leading-relaxed">
+            {t("neck.detailedInstruction")}
+          </p>
+        </div>
+
+        {/* Camera preview with neck guide overlay */}
+        <div className="relative w-full max-w-sm aspect-[3/4] bg-foreground/5 rounded-2xl overflow-hidden border-2 border-primary/30 flex items-center justify-center shadow-lg">
           <video
             ref={videoRef}
             autoPlay
@@ -183,19 +260,32 @@ const NeckScan = () => {
           />
 
           {!cameraReady && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/80">
               <Camera className="w-16 h-16 text-muted-foreground/30" />
             </div>
           )}
 
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Chin-up guide overlay */}
-          <div className="absolute inset-x-8 top-1/4 bottom-1/3 border-2 border-primary/40 rounded-3xl flex items-end justify-center pb-4">
-            <p className="text-primary text-sm font-semibold bg-background/80 px-3 py-1 rounded-full">
-              {t("neck.chinUp")} ↑
-            </p>
-          </div>
+          {/* Neck guide overlay with swallow animation */}
+          <AnimatePresence>
+            {cameraReady && !captured && (
+              <NeckGuideOverlay t={t} />
+            )}
+          </AnimatePresence>
+
+          {/* Captured flash effect */}
+          <AnimatePresence>
+            {captured && (
+              <motion.div
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0 bg-white"
+              />
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Flash toggle */}
@@ -246,11 +336,11 @@ const NeckScan = () => {
           whileTap={{ scale: 0.9 }}
           onClick={handleCapture}
           disabled={captured || !cameraReady || analyzing}
-          className="w-20 h-20 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-4 border-primary-foreground/20"
+          className="w-full max-w-xs py-4 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center gap-2 font-semibold text-lg disabled:opacity-50"
         >
-          <div className="w-14 h-14 rounded-full border-2 border-primary-foreground" />
+          <Camera className="w-6 h-6" />
+          {t("neck.capture")}
         </motion.button>
-        <p className="text-muted-foreground text-sm">{t("neck.capture")}</p>
       </div>
     </div>
   );
