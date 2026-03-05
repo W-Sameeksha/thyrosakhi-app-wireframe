@@ -118,7 +118,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "family.phone": "Phone Number",
     "family.save": "Save Contact",
     "family.preview": "Alert Preview",
-    "family.sampleMsg": "ThyroSakhi Alert: Your family member completed a health check. Score: {score}/100. Please ensure they visit a nearby PHC.",
+    "family.sampleMsg": "THYRO_TRACK Alert: Your family member completed a health check. Score: {score}/100. Please ensure they visit a nearby PHC.",
     
     // History
     "history.title": "Health History",
@@ -135,7 +135,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "settings.privacyText": "Your health data is private and secure. We never share your information without your consent.",
     "settings.help": "Help & Support",
     "settings.faq1q": "Is this app a replacement for a doctor?",
-    "settings.faq1a": "No. ThyroSakhi helps with early awareness. Always consult a doctor for treatment.",
+    "settings.faq1a": "No. THYRO_TRACK helps with early awareness. Always consult a doctor for treatment.",
     "settings.faq2q": "Is my data safe?",
     "settings.faq2a": "Yes. Your data is encrypted and stored securely.",
     "settings.logout": "Logout",
@@ -266,7 +266,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "family.phone": "ఫోన్ నంబర్",
     "family.save": "సేవ్ చేయండి",
     "family.preview": "హెచ్చరిక ప్రివ్యూ",
-    "family.sampleMsg": "ThyroSakhi హెచ్చరిక: మీ కుటుంబ సభ్యుడు ఆరోగ్య పరీక్ష పూర్తి చేశారు. స్కోర్: {score}/100. దయచేసి సమీపంలోని PHC ని సందర్శించేలా చూడండి.",
+    "family.sampleMsg": "THYRO_TRACK హెచ్చరిక: మీ కుటుంబ సభ్యుడు ఆరోగ్య పరీక్ష పూర్తి చేశారు. స్కోర్: {score}/100. దయచేసి సమీపంలోని PHC ని సందర్శించేలా చూడండి.",
     
     // History
     "history.title": "ఆరోగ్య చరిత్ర",
@@ -283,7 +283,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "settings.privacyText": "మీ ఆరోగ్య డేటా ప్రైవేట్ మరియు సురక్షితం. మీ అనుమతి లేకుండా మేము మీ సమాచారాన్ని ఎప్పుడూ పంచుకోము.",
     "settings.help": "సహాయం & మద్దతు",
     "settings.faq1q": "ఈ యాప్ వైద్యునికి ప్రత్యామ్నాయమా?",
-    "settings.faq1a": "కాదు. ThyroSakhi ముందస్తు అవగాహనకు సహాయపడుతుంది. చికిత్స కోసం ఎల్లప్పుడూ వైద్యుడిని సంప్రదించండి.",
+    "settings.faq1a": "కాదు. THYRO_TRACK ముందస్తు అవగాహనకు సహాయపడుతుంది. చికిత్స కోసం ఎల్లప్పుడూ వైద్యుడిని సంప్రదించండి.",
     "settings.faq2q": "నా డేటా సురక్షితమా?",
     "settings.faq2a": "అవును. మీ డేటా ఎన్‌క్రిప్ట్ చేయబడి సురక్షితంగా నిల్వ చేయబడుతుంది.",
     "settings.logout": "లాగ్ అవుట్",

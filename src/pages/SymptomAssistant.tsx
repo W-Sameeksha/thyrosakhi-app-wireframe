@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bot, Mic, Volume2 } from "lucide-react";
+import { Bot, Mic, Play, Volume2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   saveSymptomAnswers,
@@ -58,7 +58,7 @@ type QuestionItem = {
   text: string;
 };
 
-type AssistantStage = "safety" | "symptoms" | "locked" | "stopped" | "completed";
+type AssistantStage = "waiting" | "safety" | "symptoms" | "locked" | "stopped" | "completed";
 
 const INTRO_MESSAGE =
   "Hello. Before we begin the thyroid screening, I need to ask a few quick health questions.";
@@ -89,7 +89,7 @@ const SymptomAssistant = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [readyToListen, setReadyToListen] = useState(false);
-  const [stage, setStage] = useState<AssistantStage>("safety");
+  const [stage, setStage] = useState<AssistantStage>("waiting");
   const [symptomIndex, setSymptomIndex] = useState(0);
 
   const [symptomAnswers, setSymptomAnswers] = useState<Record<keyof SymptomAnswers, boolean | null>>({
@@ -103,9 +103,20 @@ const SymptomAssistant = () => {
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const retryRef = useRef(0);
   const messageIdRef = useRef(0);
+  
+  // Keep refs in sync with state for use in callbacks
+  const stageRef = useRef(stage);
+  const symptomIndexRef = useRef(symptomIndex);
+  const symptomAnswersRef = useRef(symptomAnswers);
+  
+  useEffect(() => { stageRef.current = stage; }, [stage]);
+  useEffect(() => { symptomIndexRef.current = symptomIndex; }, [symptomIndex]);
+  useEffect(() => { symptomAnswersRef.current = symptomAnswers; }, [symptomAnswers]);
   const startedRef = useRef(false);
 
-  const recognitionLanguage = useMemo(() => (language === "te" ? "te-IN" : "en-US"), [language]);
+  // Use English-India for speech recognition (better accent handling), but user's language for speech synthesis
+  const speechLang = useMemo(() => (language === "te" ? "te-IN" : "en-US"), [language]);
+  const recognitionLang = "en-IN"; // Always use English-India for yes/no recognition
 
   const addAssistantMessage = useCallback((text: string) => {
     messageIdRef.current += 1;
@@ -123,9 +134,27 @@ const SymptomAssistant = () => {
 
   const detectYesNo = (spokenText: string): boolean | null => {
     const response = spokenText.toLowerCase().trim();
-    const hasYes =
-      response.includes("yes") || response.includes("yeah") || response.includes("yup");
-    const hasNo = response.includes("no") || response.includes("nope") || response.includes("not");
+    
+    // Expanded yes patterns (English, Hindi, Telugu, common mishearings)
+    const yesPatterns = [
+      "yes", "yeah", "yup", "yep", "ya", "yah", "yas", "yess",
+      "sure", "okay", "ok", "correct", "right", "true", "affirmative",
+      "haan", "ha", "haa", "avunu", "aaunu", "avnu", // Hindi/Telugu
+      "absolutely", "definitely", "certainly", "of course",
+      "i do", "i did", "i have", "i am", "mm hmm", "uh huh", "mhm"
+    ];
+    
+    // Expanded no patterns (English, Hindi, Telugu, common mishearings)
+    const noPatterns = [
+      "no", "nope", "nah", "na", "not", "noo", "naah",
+      "never", "negative", "wrong", "false", "dont", "don't",
+      "nahi", "nahin", "ledu", "ledhu", "kadu", "kaadu", // Hindi/Telugu
+      "i don't", "i dont", "i didn't", "i didnt", "not really",
+      "i do not", "i have not", "i haven't", "none", "neither"
+    ];
+    
+    const hasYes = yesPatterns.some(pattern => response.includes(pattern));
+    const hasNo = noPatterns.some(pattern => response.includes(pattern));
 
     if (hasYes && hasNo) {
       return null;
@@ -156,23 +185,51 @@ const SymptomAssistant = () => {
         return;
       }
 
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = recognitionLanguage;
-      utterance.rate = 0.95;
+      const doSpeak = () => {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = speechLang;
+        utterance.rate = 0.95;
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        onEnd?.();
-      };
-      utterance.onerror = () => {
-        setIsSpeaking(false);
+        // Try to find a voice matching the language
+        const voices = window.speechSynthesis.getVoices();
+        const matchingVoice = voices.find((v) => v.lang.startsWith(speechLang.slice(0, 2)));
+        if (matchingVoice) {
+          utterance.voice = matchingVoice;
+        }
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          onEnd?.();
+        };
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          onEnd?.(); // Fix: call onEnd on error to prevent conversation from getting stuck
+        };
+
+        window.speechSynthesis.speak(utterance);
       };
 
-      window.speechSynthesis.speak(utterance);
+      // Check if voices are loaded (Chrome loads voices asynchronously)
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        doSpeak();
+      } else {
+        // Wait for voices to load
+        window.speechSynthesis.onvoiceschanged = () => {
+          doSpeak();
+          window.speechSynthesis.onvoiceschanged = null;
+        };
+        // Fallback if onvoiceschanged never fires
+        setTimeout(() => {
+          if (!window.speechSynthesis.getVoices().length) {
+            doSpeak(); // Try anyway
+          }
+        }, 100);
+      }
     },
-    [addAssistantMessage, recognitionLanguage]
+    [addAssistantMessage, speechLang]
   );
 
   const askQuestionAndListen = useCallback(
@@ -186,6 +243,7 @@ const SymptomAssistant = () => {
 
   const stopConversation = useCallback((nextStage: AssistantStage) => {
     setStage(nextStage);
+    stageRef.current = nextStage;
     recognitionRef.current?.stop();
     setIsListening(false);
     setReadyToListen(false);
@@ -212,7 +270,7 @@ const SymptomAssistant = () => {
       return;
     }
 
-    if (stage === "locked" || stage === "stopped" || stage === "completed") {
+    if (stage === "waiting" || stage === "locked" || stage === "stopped" || stage === "completed") {
       return;
     }
 
@@ -228,26 +286,46 @@ const SymptomAssistant = () => {
     const recognition = new RecognitionConstructor();
     let hasResult = false;
     recognitionRef.current = recognition;
-    recognition.lang = recognitionLanguage;
+    recognition.lang = recognitionLang;
     recognition.interimResults = false;
     recognition.continuous = false;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 3; // Get multiple alternatives for better matching
 
     recognition.onresult = (event) => {
       hasResult = true;
-      const transcript = event.results[0]?.[0]?.transcript?.trim() ?? "";
+      
+      // Get all alternatives and combine them for better detection
+      const alternatives: string[] = [];
+      const results = event.results[0];
+      for (let i = 0; i < results.length; i++) {
+        const alt = results[i]?.transcript?.trim();
+        if (alt) alternatives.push(alt);
+      }
+      
+      const transcript = alternatives[0] ?? "";
       setRecognizedText(transcript);
       addUserMessage(transcript || "...");
 
-      const answer = detectYesNo(transcript);
+      // Check all alternatives for yes/no
+      let answer: boolean | null = null;
+      for (const alt of alternatives) {
+        answer = detectYesNo(alt);
+        if (answer !== null) break;
+      }
+      
       if (answer === null) {
         handleUnclearResponse();
         return;
       }
 
       resetRetryCounter();
+      
+      // Use refs to get current values (not stale closure values)
+      const currentStage = stageRef.current;
+      const currentSymptomIndex = symptomIndexRef.current;
+      const currentSymptomAnswers = symptomAnswersRef.current;
 
-      if (stage === "safety") {
+      if (currentStage === "safety") {
         if (answer) {
           setScreeningLocked(true);
           stopConversation("locked");
@@ -259,35 +337,39 @@ const SymptomAssistant = () => {
 
         setScreeningLocked(false);
         setStage("symptoms");
+        stageRef.current = "symptoms";
         setSymptomIndex(0);
+        symptomIndexRef.current = 0;
         askQuestionAndListen(symptomQuestions[0].text);
         return;
       }
 
-      if (stage === "symptoms") {
-        const currentQuestion = symptomQuestions[symptomIndex];
+      if (currentStage === "symptoms") {
+        const currentQuestion = symptomQuestions[currentSymptomIndex];
         if (!currentQuestion) {
           return;
         }
 
-        setSymptomAnswers((prev) => ({
-          ...prev,
+        const newAnswers = {
+          ...currentSymptomAnswers,
           [currentQuestion.key]: answer,
-        }));
+        };
+        setSymptomAnswers(newAnswers);
+        symptomAnswersRef.current = newAnswers;
 
-        const nextIndex = symptomIndex + 1;
+        const nextIndex = currentSymptomIndex + 1;
         if (nextIndex >= symptomQuestions.length) {
           const finalized: SymptomAnswers = {
-            fatigue: currentQuestion.key === "fatigue" ? answer : symptomAnswers.fatigue === true,
+            fatigue: currentQuestion.key === "fatigue" ? answer : newAnswers.fatigue === true,
             weight_change:
-              currentQuestion.key === "weight_change" ? answer : symptomAnswers.weight_change === true,
-            hair_fall: currentQuestion.key === "hair_fall" ? answer : symptomAnswers.hair_fall === true,
+              currentQuestion.key === "weight_change" ? answer : newAnswers.weight_change === true,
+            hair_fall: currentQuestion.key === "hair_fall" ? answer : newAnswers.hair_fall === true,
             temperature_sensitivity:
               currentQuestion.key === "temperature_sensitivity"
                 ? answer
-                : symptomAnswers.temperature_sensitivity === true,
+                : newAnswers.temperature_sensitivity === true,
             irregular_cycles:
-              currentQuestion.key === "irregular_cycles" ? answer : symptomAnswers.irregular_cycles === true,
+              currentQuestion.key === "irregular_cycles" ? answer : newAnswers.irregular_cycles === true,
           };
 
           saveSymptomAnswers(finalized);
@@ -298,6 +380,7 @@ const SymptomAssistant = () => {
         }
 
         setSymptomIndex(nextIndex);
+        symptomIndexRef.current = nextIndex;
         askQuestionAndListen(symptomQuestions[nextIndex].text);
       }
     };
@@ -341,27 +424,21 @@ const SymptomAssistant = () => {
     isSpeaking,
     navigate,
     readyToListen,
-    recognitionLanguage,
     speak,
-    stage,
+    stage, // Only used for early return check
     stopConversation,
-    symptomAnswers.fatigue,
-    symptomAnswers.hair_fall,
-    symptomAnswers.irregular_cycles,
-    symptomAnswers.temperature_sensitivity,
-    symptomAnswers.weight_change,
-    symptomIndex,
   ]);
 
-  useEffect(() => {
-    if (!startedRef.current) {
-      startedRef.current = true;
-      speak(INTRO_MESSAGE, () => {
-        speak(YES_NO_INSTRUCTION, () => {
-          askQuestionAndListen(SAFETY_QUESTION);
-        });
+  const startConversation = useCallback(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    setStage("safety");
+    stageRef.current = "safety";
+    speak(INTRO_MESSAGE, () => {
+      speak(YES_NO_INSTRUCTION, () => {
+        askQuestionAndListen(SAFETY_QUESTION);
       });
-    }
+    });
   }, [askQuestionAndListen, speak]);
 
   useEffect(() => {
@@ -392,6 +469,25 @@ const SymptomAssistant = () => {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 h-[65vh] overflow-y-auto space-y-3">
+          {stage === "waiting" && (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="w-10 h-10 text-primary" />
+              </div>
+              <p className="text-center text-muted-foreground">
+                Tap the button below to start your health screening conversation
+              </p>
+              <button
+                type="button"
+                onClick={startConversation}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
+              >
+                <Play className="w-5 h-5" />
+                Start Conversation
+              </button>
+            </div>
+          )}
+          
           {messages.map((message) => (
             <div
               key={message.id}
@@ -431,6 +527,8 @@ const SymptomAssistant = () => {
               ? "Listening..."
               : isSpeaking
               ? "Assistant speaking..."
+              : stage === "waiting"
+              ? "Tap Start to begin"
               : stage === "locked"
               ? "Screening locked"
               : stage === "stopped"
@@ -446,6 +544,16 @@ const SymptomAssistant = () => {
             className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
           >
             Return to Home
+          </button>
+        )}
+
+        {stage === "stopped" && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
+          >
+            Try Again
           </button>
         )}
       </div>

@@ -21,25 +21,39 @@ NECK_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 
 def calculate_final_risk(voice_score: float, symptom_score: float, neck_score: float) -> tuple[float, str]:
+    # Symptom analysis is given the highest weight because
+    # clinical symptoms are a primary indicator of thyroid disorders.
+    # Neck swelling detection is secondary, and voice biomarkers provide
+    # supportive evidence.
+    #
+    # Weight distribution:
+    #   Symptoms → 50% contribution
+    #   Neck Scan → 30% contribution
+    #   Voice Analysis → 20% contribution
+
+    # Normalize scores to 0-1 range
     voice_score = max(0.0, min(voice_score, 3.0))
     symptom_score = max(0.0, min(symptom_score, 5.0))
     neck_score = max(0.0, min(neck_score, 0.5))
 
-    voice_weight = (voice_score / 3) * 0.40
-    symptom_weight = (symptom_score / 5) * 0.40
-    neck_weight = (neck_score / 0.5) * 0.20
+    normalized_voice = voice_score / 3.0
+    normalized_symptom = symptom_score / 5.0
+    normalized_neck = neck_score / 0.5
 
-    final_score = voice_weight + symptom_weight + neck_weight
+    # Apply weighted contribution
+    final_score = (
+        0.5 * normalized_symptom +
+        0.3 * normalized_neck +
+        0.2 * normalized_voice
+    )
 
-    if neck_score == 2 and voice_score >= 1:
-        return final_score, "High"
-
-    if final_score < 0.3:
-        risk_level = "Low"
-    elif final_score < 0.6:
-        risk_level = "Moderate"
+    # Risk level thresholds
+    if final_score < 0.35:
+        risk_level = "low"
+    elif final_score < 0.65:
+        risk_level = "moderate"
     else:
-        risk_level = "High"
+        risk_level = "high"
 
     return final_score, risk_level
 

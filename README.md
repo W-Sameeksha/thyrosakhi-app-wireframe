@@ -1,6 +1,6 @@
-# ThyroSakhi App Wireframe
+# THYRO_TRACK App
 
-Frontend wireframe project built with Vite, React, TypeScript, shadcn-ui, and Tailwind CSS.
+Frontend project built with Vite, React, TypeScript, shadcn-ui, and Tailwind CSS.
 
 ## Getting started
 

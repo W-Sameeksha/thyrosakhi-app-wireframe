@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Mic, Camera, Salad, MapPin, Activity } from "lucide-react";
+import { Mic, Camera, Salad, MapPin, Activity, RotateCcw } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { isScreeningLocked } from "@/lib/screeningLock";
+import { isScreeningLocked, resetScreeningData } from "@/lib/screeningLock";
 
 const quickActions = [
   { key: "home.voiceTest", icon: Mic, path: "/voice-test", color: "bg-primary/10 text-primary" },
@@ -16,6 +16,11 @@ const Home = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const screeningLocked = isScreeningLocked();
+
+  const handleResetScreening = () => {
+    resetScreeningData();
+    window.location.reload();
+  };
 
   // Mock last score
   const lastScore: number | null = 72;
@@ -84,6 +89,16 @@ const Home = () => {
             </motion.button>
           ))}
         </div>
+
+        {/* Reset Screening Button */}
+        <button
+          type="button"
+          onClick={handleResetScreening}
+          className="w-full py-3 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset Screening Data
+        </button>
       </div>
 
       <BottomNav />

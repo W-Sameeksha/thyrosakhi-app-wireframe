@@ -31,7 +31,7 @@ const SplashScreen = () => {
           <Heart className="w-14 h-14 text-primary-foreground" fill="currentColor" />
         </div>
         <h1 className="text-3xl font-extrabold text-primary-foreground tracking-tight">
-          ThyroSakhi
+          THYRO_TRACK
         </h1>
         <motion.p
           initial={{ opacity: 0, y: 10 }}

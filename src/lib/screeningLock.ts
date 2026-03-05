@@ -151,3 +151,14 @@ export const getNextScreeningRoute = (): ScreeningRoute => {
 
   return "/risk-score";
 };
+
+export const resetScreeningData = () => {
+  if (!hasWindow()) {
+    return;
+  }
+
+  window.localStorage.removeItem(SYMPTOM_DATA_KEY);
+  window.localStorage.removeItem(VOICE_RESULT_KEY);
+  window.localStorage.removeItem(NECK_RESULT_KEY);
+  window.localStorage.removeItem(SCREENING_LOCK_KEY);
+};
