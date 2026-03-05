@@ -7,10 +7,9 @@ import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
 import { isScreeningLocked } from "@/lib/screeningLock";
 
 type NeckAnalysisResult = {
-  image_result: string;
-  symmetry_score: number;
-  visible_asymmetry: boolean;
-  swelling_flag: boolean;
+  neck_score: number;
+  swelling_level: string;
+  message: string;
 };
 
 const Processing = () => {
@@ -57,14 +56,12 @@ const Processing = () => {
       {neckAnalysis && (
         <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-4 text-sm space-y-2">
           <p className="font-semibold text-foreground">Neck Scan Result</p>
-          <p className="text-muted-foreground">{neckAnalysis.image_result}</p>
+          <p className="text-muted-foreground">{neckAnalysis.message}</p>
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <p className="text-muted-foreground">Symmetry Score</p>
-            <p className="text-right font-medium text-foreground">{neckAnalysis.symmetry_score}</p>
-            <p className="text-muted-foreground">Visible Asymmetry</p>
-            <p className="text-right font-medium text-foreground">{neckAnalysis.visible_asymmetry ? "Yes" : "No"}</p>
-            <p className="text-muted-foreground">Swelling Flag</p>
-            <p className="text-right font-medium text-foreground">{neckAnalysis.swelling_flag ? "Yes" : "No"}</p>
+            <p className="text-muted-foreground">Neck Score</p>
+            <p className="text-right font-medium text-foreground">{neckAnalysis.neck_score}</p>
+            <p className="text-muted-foreground">Swelling Level</p>
+            <p className="text-right font-medium text-foreground capitalize">{neckAnalysis.swelling_level}</p>
           </div>
         </div>
       )}

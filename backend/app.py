@@ -1,5 +1,7 @@
 import os
 import tempfile
+import importlib
+import base64
 
 import cv2
 import librosa
@@ -14,12 +16,18 @@ CORS(app)
 
 ASYMMETRY_THRESHOLD = 20.0
 DETECTED_SKIN_PIXEL_THRESHOLD = 1200
+MIN_VIDEO_DURATION_SECONDS = 2.5
+NECK_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 
 def calculate_final_risk(voice_score: float, symptom_score: float, neck_score: float) -> tuple[float, str]:
+    voice_score = max(0.0, min(voice_score, 3.0))
+    symptom_score = max(0.0, min(symptom_score, 5.0))
+    neck_score = max(0.0, min(neck_score, 0.5))
+
     voice_weight = (voice_score / 3) * 0.40
-    symptom_weight = (symptom_score / 5) * 0.35
-    neck_weight = (neck_score / 2) * 0.25
+    symptom_weight = (symptom_score / 5) * 0.40
+    neck_weight = (neck_score / 0.5) * 0.20
 
     final_score = voice_weight + symptom_weight + neck_weight
 
@@ -48,6 +56,192 @@ def max_horizontal_width_in_band(edge_image: np.ndarray, start_row: int, end_row
                 max_width = row_width
 
     return max_width
+
+
+def estimate_neck_roi_from_face_landmarks(
+    frame_width: int,
+    frame_height: int,
+    face_landmarks: list,
+) -> tuple[int, int, int, int] | None:
+    jawline_indices = [
+        234,
+        93,
+        132,
+        58,
+        172,
+        136,
+        150,
+        149,
+        176,
+        148,
+        152,
+        377,
+        400,
+        378,
+        379,
+        365,
+        397,
+        288,
+        361,
+        323,
+        454,
+    ]
+
+    jaw_x = []
+    jaw_y = []
+    for index in jawline_indices:
+        landmark = face_landmarks[index]
+        jaw_x.append(int(landmark.x * frame_width))
+        jaw_y.append(int(landmark.y * frame_height))
+
+    min_jaw_x = max(min(jaw_x), 0)
+    max_jaw_x = min(max(jaw_x), frame_width - 1)
+    chin_y = min(max(jaw_y), frame_height - 1)
+
+    jaw_width = max_jaw_x - min_jaw_x
+    if jaw_width <= 0:
+        return None
+
+    side_padding = int(jaw_width * 0.12)
+    neck_left = max(min_jaw_x - side_padding, 0)
+    neck_right = min(max_jaw_x + side_padding, frame_width)
+
+    neck_top = min(chin_y + int(frame_height * 0.03), frame_height - 1)
+    neck_height = max(int(jaw_width * 0.95), int(frame_height * 0.20))
+    neck_bottom = min(neck_top + neck_height, frame_height)
+
+    if neck_right <= neck_left or neck_bottom <= neck_top:
+        return None
+
+    return neck_left, neck_top, neck_right, neck_bottom
+
+
+def largest_contour_area(gray_roi: np.ndarray) -> float:
+    blurred = cv2.GaussianBlur(gray_roi, (5, 5), 0)
+    _, binary = cv2.threshold(
+        blurred,
+        0,
+        255,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+    )
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return 0.0
+    return float(max(cv2.contourArea(contour) for contour in contours))
+
+
+def analyze_neck_swallow_video(video_path: str) -> dict:
+    mediapipe_module = importlib.import_module("mediapipe")
+    face_mesh = mediapipe_module.solutions.face_mesh.FaceMesh(
+        static_image_mode=False,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
+    )
+
+    capture = cv2.VideoCapture(video_path)
+    if not capture.isOpened():
+        return {"error": "Unable to read uploaded video."}
+
+    fps = capture.get(cv2.CAP_PROP_FPS)
+    frame_count = capture.get(cv2.CAP_PROP_FRAME_COUNT)
+    duration = (frame_count / fps) if fps and frame_count else 0.0
+    if duration and duration < MIN_VIDEO_DURATION_SECONDS:
+        capture.release()
+        face_mesh.close()
+        return {"error": "Please record a 3-4 second swallowing video."}
+
+    roi_coordinates: tuple[int, int, int, int] | None = None
+    landmarks_detected = False
+    previous_roi_gray: np.ndarray | None = None
+    vertical_motion_series: list[float] = []
+    contour_area_series: list[float] = []
+    processed_frames = 0
+
+    try:
+        while True:
+            has_frame, frame = capture.read()
+            if not has_frame:
+                break
+
+            processed_frames += 1
+            frame_height, frame_width = frame.shape[:2]
+
+            if roi_coordinates is None:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                mesh_result = face_mesh.process(frame_rgb)
+                if mesh_result.multi_face_landmarks:
+                    landmarks_detected = True
+                    roi_coordinates = estimate_neck_roi_from_face_landmarks(
+                        frame_width,
+                        frame_height,
+                        mesh_result.multi_face_landmarks[0].landmark,
+                    )
+
+            if roi_coordinates is None:
+                continue
+
+            x1, y1, x2, y2 = roi_coordinates
+            neck_roi = frame[y1:y2, x1:x2]
+            if neck_roi.size == 0:
+                continue
+
+            gray_roi = cv2.cvtColor(neck_roi, cv2.COLOR_BGR2GRAY)
+            gray_roi = cv2.GaussianBlur(gray_roi, (5, 5), 0)
+
+            contour_area_series.append(largest_contour_area(gray_roi))
+
+            if previous_roi_gray is not None:
+                flow = cv2.calcOpticalFlowFarneback(
+                    previous_roi_gray,
+                    gray_roi,
+                    None,
+                    0.5,
+                    3,
+                    15,
+                    3,
+                    5,
+                    1.2,
+                    0,
+                )
+                vertical_flow = np.abs(flow[..., 1])
+                vertical_motion_series.append(float(np.mean(vertical_flow)))
+
+            previous_roi_gray = gray_roi
+    finally:
+        capture.release()
+        face_mesh.close()
+
+    if not landmarks_detected or roi_coordinates is None:
+        return {"error": "Please retake the photo with the neck clearly visible."}
+
+    if processed_frames < 15 or len(vertical_motion_series) < 3:
+        return {"error": "Video quality is too low. Please retake a steady 3-4 second clip."}
+
+    vertical_baseline = float(np.median(vertical_motion_series))
+    vertical_peak = float(max(vertical_motion_series))
+    vertical_displacement = max(0.0, vertical_peak - vertical_baseline)
+
+    area_min = float(min(contour_area_series)) if contour_area_series else 0.0
+    area_max = float(max(contour_area_series)) if contour_area_series else 0.0
+    area_change_ratio = (area_max - area_min) / max(area_min, 1.0)
+
+    vertical_component = min(vertical_displacement / 1.4, 1.0)
+    area_component = min(area_change_ratio / 0.25, 1.0)
+    neck_risk_score = round((0.6 * vertical_component + 0.4 * area_component), 4)
+
+    if neck_risk_score < 0.35:
+        neck_result = "normal"
+    elif neck_risk_score < 0.7:
+        neck_result = "possible swelling"
+    else:
+        neck_result = "visible swelling"
+
+    return {
+        "neck_risk_score": neck_risk_score,
+        "neck_result": neck_result,
+    }
 
 
 @app.post("/calculate-risk")
@@ -236,6 +430,215 @@ def analyze_image() -> tuple:
 
 @app.post("/analyze-neck")
 def analyze_neck() -> tuple:
+    image = None
+
+    payload = request.get_json(silent=True) or {}
+    base64_image = payload.get("image")
+
+    if isinstance(base64_image, str) and base64_image.strip():
+        try:
+            encoded = base64_image.split(",", 1)[1] if "," in base64_image else base64_image
+            image_bytes = base64.b64decode(encoded)
+            array = np.frombuffer(image_bytes, dtype=np.uint8)
+            image = cv2.imdecode(array, cv2.IMREAD_COLOR)
+        except Exception:
+            return jsonify({"status": "error", "message": "Invalid base64 image payload."}), 400
+    elif "file" in request.files:
+        uploaded_file = request.files["file"]
+        if uploaded_file.filename == "":
+            return jsonify({"status": "error", "message": "No file selected"}), 400
+
+        safe_name = secure_filename(uploaded_file.filename)
+        extension = os.path.splitext(safe_name)[1].lower()
+        if extension not in {".jpg", ".jpeg", ".png"}:
+            return jsonify({"status": "error", "message": "Only JPG and PNG images are supported"}), 400
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=extension)
+        temp_path = temp_file.name
+        temp_file.close()
+
+        try:
+            uploaded_file.save(temp_path)
+            image = cv2.imread(temp_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+    else:
+        return jsonify({"status": "error", "message": "Missing image payload."}), 400
+
+    if image is None:
+        return jsonify({"status": "error", "message": "Unable to decode neck image."}), 400
+
+    frame_height, frame_width = image.shape[:2]
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    chin_x = None
+    chin_y = None
+    detected_face_box: tuple[int, int, int, int] | None = None
+
+    try:
+        mediapipe_module = importlib.import_module("mediapipe")
+        face_mesh = mediapipe_module.solutions.face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+        )
+        mesh_result = face_mesh.process(image_rgb)
+        face_mesh.close()
+
+        if mesh_result.multi_face_landmarks:
+            face_landmarks = mesh_result.multi_face_landmarks[0].landmark
+            chin_landmark = face_landmarks[152]
+            chin_x = int(chin_landmark.x * frame_width)
+            chin_y = int(chin_landmark.y * frame_height)
+    except Exception:
+        pass
+
+    if chin_x is None or chin_y is None:
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        detected_faces = cascade.detectMultiScale(
+            gray_image,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(80, 80),
+        )
+
+        if len(detected_faces) > 0:
+            x, y, w, h = max(detected_faces, key=lambda rect: rect[2] * rect[3])
+            detected_face_box = (int(x), int(y), int(w), int(h))
+            chin_x = int(x + (w / 2))
+            chin_y = int(y + h)
+
+    face_anchor_detected = chin_x is not None and chin_y is not None
+
+    if chin_x is None or chin_y is None:
+        chin_x = frame_width // 2
+        chin_y = int(frame_height * 0.42)
+
+    if chin_x is None or chin_y is None:
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Neck region not clearly visible. Please retake the image.",
+            }
+        ), 400
+
+    if detected_face_box:
+        _, _, face_w, face_h = detected_face_box
+        half_width = max(int(face_w * 0.65), 80)
+        roi_height = max(int(face_h * 0.95), 120)
+    else:
+        half_width = max(int(frame_width * 0.18), 90)
+        roi_height = max(int(frame_height * 0.22), 120)
+
+    candidate_offsets = [0, int(roi_height * 0.12), int(roi_height * 0.22)]
+    valid_neck_crop = False
+    bulge_value: float | None = None
+
+    for offset in candidate_offsets:
+        neck_top = max(chin_y + offset, 0)
+        neck_bottom = min(neck_top + roi_height, frame_height)
+        neck_left = max(chin_x - half_width, 0)
+        neck_right = min(chin_x + half_width, frame_width)
+
+        if neck_bottom <= neck_top or neck_right <= neck_left:
+            continue
+
+        neck_roi = image[neck_top:neck_bottom, neck_left:neck_right]
+        if neck_roi.size == 0:
+            continue
+
+        gray_roi = cv2.cvtColor(neck_roi, cv2.COLOR_BGR2GRAY)
+        roi_std = float(np.std(gray_roi))
+        roi_mean = float(np.mean(gray_roi))
+
+        ycrcb_roi = cv2.cvtColor(neck_roi, cv2.COLOR_BGR2YCrCb)
+        lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+        upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+        skin_mask = cv2.inRange(ycrcb_roi, lower_skin, upper_skin)
+        skin_ratio = float(np.count_nonzero(skin_mask)) / float(skin_mask.size)
+
+        min_skin_ratio = 0.06 if face_anchor_detected else 0.10
+
+        if roi_std < 8.0 or roi_mean < 20.0 or skin_ratio < min_skin_ratio:
+            continue
+
+        valid_neck_crop = True
+        blurred_roi = cv2.GaussianBlur(gray_roi, (5, 5), 0)
+        edges = cv2.Canny(blurred_roi, 35, 120)
+        kernel = np.ones((3, 3), dtype=np.uint8)
+        edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            continue
+
+        roi_area = float(gray_roi.shape[0] * gray_roi.shape[1])
+        usable_contours = [contour for contour in contours if cv2.contourArea(contour) > roi_area * 0.01]
+        if not usable_contours:
+            continue
+
+        largest_contour = max(usable_contours, key=cv2.contourArea)
+        contour_area = float(cv2.contourArea(largest_contour))
+        if contour_area <= 0:
+            continue
+
+        hull = cv2.convexHull(largest_contour)
+        hull_area = float(cv2.contourArea(hull))
+        if hull_area <= 0:
+            continue
+
+        bulge_value = max(0.0, min((hull_area - contour_area) / hull_area, 1.0))
+        break
+
+    if not valid_neck_crop and face_anchor_detected:
+        return jsonify(
+            {
+                "neck_score": 0.1,
+                "swelling_level": "low",
+                "message": "No visible swelling detected",
+                "bulge_value": 0.08,
+            }
+        ), 200
+
+    if not valid_neck_crop:
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Neck region not clearly visible. Please retake the image.",
+            }
+        ), 400
+
+    if bulge_value is None:
+        bulge_value = 0.08
+
+    if bulge_value < 0.15:
+        neck_score = 0.1
+        swelling_level = "low"
+        message = "No visible swelling detected"
+    elif bulge_value < 0.30:
+        neck_score = 0.3
+        swelling_level = "moderate"
+        message = "Possible neck swelling detected"
+    else:
+        neck_score = 0.5
+        swelling_level = "high"
+        message = "Possible neck swelling detected"
+
+    return jsonify(
+        {
+            "neck_score": neck_score,
+            "swelling_level": swelling_level,
+            "message": message,
+            "bulge_value": round(bulge_value, 4),
+        }
+    ), 200
+
+
+@app.post("/analyze-neck-video")
+def analyze_neck_video() -> tuple:
     if "file" not in request.files:
         return jsonify({"error": "Missing file field 'file' in multipart/form-data"}), 400
 
@@ -246,8 +649,8 @@ def analyze_neck() -> tuple:
 
     safe_name = secure_filename(uploaded_file.filename)
     extension = os.path.splitext(safe_name)[1].lower()
-    if extension not in {".jpg", ".jpeg", ".png"}:
-        return jsonify({"error": "Only JPG and PNG images are supported"}), 400
+    if extension not in NECK_VIDEO_EXTENSIONS:
+        return jsonify({"error": "Only MP4, MOV, AVI, MKV, and WEBM videos are supported"}), 400
 
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=extension)
     temp_path = temp_file.name
@@ -255,116 +658,12 @@ def analyze_neck() -> tuple:
 
     try:
         uploaded_file.save(temp_path)
-        image = cv2.imread(temp_path)
-
-        if image is None:
-            return jsonify({"error": "Failed to load neck image"}), 400
-
-        resized_image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
-
-        crop_width = int(256 * 0.40)
-        crop_start = (256 - crop_width) // 2
-        crop_end = crop_start + crop_width
-        center_region = resized_image[:, crop_start:crop_end]
-
-        if center_region.size == 0:
-            return jsonify({"error": "Failed to isolate center neck region"}), 400
-
-        hsv_image = cv2.cvtColor(center_region, cv2.COLOR_BGR2HSV)
-        lower_skin_1 = np.array([0, 15, 30], dtype=np.uint8)
-        upper_skin_1 = np.array([35, 255, 255], dtype=np.uint8)
-        lower_skin_2 = np.array([160, 15, 30], dtype=np.uint8)
-        upper_skin_2 = np.array([179, 255, 255], dtype=np.uint8)
-
-        mask_1 = cv2.inRange(hsv_image, lower_skin_1, upper_skin_1)
-        mask_2 = cv2.inRange(hsv_image, lower_skin_2, upper_skin_2)
-        skin_mask = cv2.bitwise_or(mask_1, mask_2)
-
-        kernel = np.ones((3, 3), np.uint8)
-        skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
-        skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
-
-        skin_pixel_count = int(np.count_nonzero(skin_mask))
-        if skin_pixel_count == 0:
-            fallback_lower = np.array([0, 0, 20], dtype=np.uint8)
-            fallback_upper = np.array([179, 255, 255], dtype=np.uint8)
-            skin_mask = cv2.inRange(hsv_image, fallback_lower, fallback_upper)
-            skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
-            skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
-            skin_pixel_count = int(np.count_nonzero(skin_mask))
-
-        if skin_pixel_count < DETECTED_SKIN_PIXEL_THRESHOLD:
-            return jsonify({"error": "Image unclear, please retake the photo"}), 400
-
-        masked_region = cv2.bitwise_and(center_region, center_region, mask=skin_mask)
-        gray_image = cv2.cvtColor(masked_region, cv2.COLOR_BGR2GRAY)
-        equalized_image = cv2.equalizeHist(gray_image)
-
-        blurred_image = cv2.GaussianBlur(equalized_image, (5, 5), 0)
-        edges = cv2.Canny(blurred_image, 50, 150)
-
-        height, width = equalized_image.shape
-        half_width = width // 2
-
-        if half_width == 0:
-            return jsonify({"error": "Image is too narrow for symmetry analysis"}), 400
-
-        left_half = equalized_image[:, :half_width]
-        right_half = equalized_image[:, width - half_width :]
-        right_flipped = cv2.flip(right_half, 1)
-
-        left_mask = skin_mask[:, :half_width]
-        right_mask = skin_mask[:, width - half_width :]
-        right_mask_flipped = cv2.flip(right_mask, 1)
-        valid_mask = cv2.bitwise_and(left_mask, right_mask_flipped)
-
-        valid_pixels = valid_mask > 0
-        if not np.any(valid_pixels):
-            return jsonify({"error": "Insufficient skin overlap for symmetry analysis"}), 400
-
-        absolute_difference = np.abs(left_half.astype(np.float32) - right_flipped.astype(np.float32))
-        mean_difference = float(np.mean(absolute_difference[valid_pixels]))
-        symmetry_score = mean_difference / 255.0
-
-        if symmetry_score < 0.08:
-            neck_risk = 0
-        elif symmetry_score < 0.18:
-            neck_risk = 1
-        else:
-            neck_risk = 2
-
-        asymmetry_flag = neck_risk >= 1
-
-        upper_width = max_horizontal_width_in_band(edges, 0, height // 3)
-        middle_width = max_horizontal_width_in_band(edges, height // 3, (2 * height) // 3)
-        lower_width = max_horizontal_width_in_band(edges, (2 * height) // 3, height)
-
-        swelling_flag = (
-            middle_width > upper_width * 1.1 and middle_width > lower_width * 1.1
-        )
-
-        if asymmetry_flag or swelling_flag:
-            image_result = (
-                "Visible structural irregularity detected in neck region. "
-                "Clinical evaluation recommended."
-            )
-        else:
-            image_result = (
-                "No visible external irregularity detected. "
-                "This does not rule out thyroid conditions."
-            )
-
-        return jsonify(
-            {
-                "symmetry_score": round(symmetry_score, 4),
-                "neck_risk": neck_risk,
-                "visible_asymmetry": asymmetry_flag,
-                "swelling_flag": swelling_flag,
-                "image_result": image_result,
-            }
-        ), 200
+        analysis = analyze_neck_swallow_video(temp_path)
+        if "error" in analysis:
+            return jsonify(analysis), 400
+        return jsonify(analysis), 200
     except Exception as exc:
-        return jsonify({"error": f"Failed to analyze neck image: {str(exc)}"}), 400
+        return jsonify({"error": f"Failed to analyze neck video: {str(exc)}"}), 400
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)

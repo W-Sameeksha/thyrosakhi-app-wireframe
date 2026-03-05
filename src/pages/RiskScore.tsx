@@ -1,40 +1,103 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked } from "@/lib/screeningLock";
-
-type NeckAnalysisResult = {
-  image_result: string;
-  symmetry_score: number;
-  visible_asymmetry: boolean;
-  swelling_flag: boolean;
-};
+import {
+  getNeckResult,
+  getScreeningCompletion,
+  getSymptomAnswers,
+  getVoiceResult,
+  isScreeningLocked,
+} from "@/lib/screeningLock";
 
 const RiskScore = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const location = useLocation();
   const screeningLocked = isScreeningLocked();
-  const neckAnalysis = (location.state as { neckAnalysis?: NeckAnalysisResult } | null)?.neckAnalysis;
 
   if (screeningLocked) {
     return <ScreeningLockedNotice />;
   }
 
+  const completion = getScreeningCompletion();
+  const symptomAnswers = getSymptomAnswers();
+  const voiceResult = getVoiceResult();
+  const neckResult = getNeckResult();
+
+  if (!completion.isComplete || !symptomAnswers || !voiceResult || !neckResult) {
+    return (
+      <div className="min-h-screen bg-background">
+        <PageHeader titleKey="risk.title" showBack={false} />
+        <div className="px-6 pt-8 space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="font-semibold text-foreground mb-2">Complete all tests to view final result</p>
+            <ul className="text-sm space-y-2">
+              <li className={completion.hasSymptoms ? "text-success" : "text-muted-foreground"}>
+                Symptoms Test {completion.hasSymptoms ? "✓" : "✗"}
+              </li>
+              <li className={completion.hasVoice ? "text-success" : "text-muted-foreground"}>
+                Voice Test {completion.hasVoice ? "✓" : "✗"}
+              </li>
+              <li className={completion.hasNeck ? "text-success" : "text-muted-foreground"}>
+                Neck Scan {completion.hasNeck ? "✓" : "✗"}
+              </li>
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {!completion.hasSymptoms && (
+              <button
+                type="button"
+                onClick={() => navigate("/symptom-assistant")}
+                className="rounded-xl bg-primary text-primary-foreground py-3 font-semibold"
+              >
+                Complete Symptoms Test
+              </button>
+            )}
+            {!completion.hasVoice && (
+              <button
+                type="button"
+                onClick={() => navigate("/voice-test")}
+                className="rounded-xl bg-primary text-primary-foreground py-3 font-semibold"
+              >
+                Complete Voice Test
+              </button>
+            )}
+            {!completion.hasNeck && (
+              <button
+                type="button"
+                onClick={() => navigate("/neck-scan")}
+                className="rounded-xl bg-primary text-primary-foreground py-3 font-semibold"
+              >
+                Complete Neck Scan
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const score = (() => {
-    if (!neckAnalysis) {
-      return 72;
-    }
+    const symptomScore =
+      Number(symptomAnswers.fatigue) +
+      Number(symptomAnswers.weight_change) +
+      Number(symptomAnswers.hair_fall) +
+      Number(symptomAnswers.temperature_sensitivity) +
+      Number(symptomAnswers.irregular_cycles);
 
-    const normalizedFromSymmetry = 100 - Math.round(neckAnalysis.symmetry_score * 2.5);
-    const asymmetryPenalty = neckAnalysis.visible_asymmetry ? 20 : 0;
-    const swellingPenalty = neckAnalysis.swelling_flag ? 15 : 0;
+    const voiceRisk = Math.min(Math.max(voiceResult.risk_score, 0), 3);
+    const neckRisk = Math.min(Math.max(neckResult.neck_score ?? 0, 0), 0.5);
 
-    const computedScore = normalizedFromSymmetry - asymmetryPenalty - swellingPenalty;
-    return Math.min(100, Math.max(0, computedScore));
+    const normalizedRisk =
+      (voiceRisk / 3) * 0.4 +
+      (symptomScore / 5) * 0.4 +
+      (neckRisk / 0.5) * 0.2;
+
+    const healthScore = Math.round((1 - normalizedRisk) * 100);
+    return Math.min(100, Math.max(0, healthScore));
   })();
 
   const maxAngle = 180;
@@ -117,7 +180,11 @@ const RiskScore = () => {
 
         <Button
           size="lg"
-          onClick={() => navigate("/diet")}
+          onClick={() =>
+            navigate("/diet", {
+              state: { riskLevel },
+            })
+          }
           className="w-full max-w-xs rounded-2xl py-6 text-lg font-bold"
         >
           {t("risk.nextSteps")}

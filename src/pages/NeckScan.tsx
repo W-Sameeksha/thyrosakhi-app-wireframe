@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Camera, Zap, ZapOff, CheckCircle, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked } from "@/lib/screeningLock";
+import { isScreeningLocked, saveNeckResult } from "@/lib/screeningLock";
 
 const NeckScan = () => {
   const { t } = useLanguage();
@@ -128,28 +128,26 @@ const NeckScan = () => {
 
     try {
       setAnalyzing(true);
-      const imageBlob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error("Failed to generate image file."));
-            return;
-          }
-          resolve(blob);
-        }, "image/png");
-      });
-
-      const formData = new FormData();
-      formData.append("file", imageBlob, "neck-scan.png");
+      const base64Image = canvas.toDataURL("image/png");
 
       const response = await fetch("http://localhost:5000/analyze-neck", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image: base64Image }),
       });
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.error ?? "Neck image analysis failed.");
+        throw new Error(result?.message ?? result?.error ?? "Neck image analysis failed.");
       }
+
+      saveNeckResult({
+        neck_score: result.neck_score,
+        swelling_level: result.swelling_level,
+        message: result.message,
+      });
 
       navigate("/processing", {
         state: {

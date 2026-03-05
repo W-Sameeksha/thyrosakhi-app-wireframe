@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Mic } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked } from "@/lib/screeningLock";
+import { isScreeningLocked, saveVoiceResult } from "@/lib/screeningLock";
 
 const MAX_RECORD_SECONDS = 10;
 const ANALYSIS_TIMEOUT_MS = 30000;
@@ -152,6 +152,14 @@ const VoiceTest = () => {
 
         const analysisData = data as VoiceAnalysisResponse;
         setAnalysisResult(analysisData);
+        saveVoiceResult({
+          average_pitch: analysisData.average_pitch,
+          pitch_variation: analysisData.pitch_variation,
+          energy: analysisData.energy,
+          duration: analysisData.duration,
+          risk_score: analysisData.risk_score,
+          risk_level: analysisData.risk_level,
+        });
 
         if (analysisData.dietary_recommendations?.length) {
           navigate("/diet", {
@@ -262,13 +270,6 @@ const VoiceTest = () => {
 
   const circumference = 2 * Math.PI * 44;
   const progress = ((MAX_RECORD_SECONDS - timeLeft) / MAX_RECORD_SECONDS) * circumference;
-  const riskLevelKey = analysisResult?.risk_level?.toLowerCase();
-  const riskLevelColor =
-    riskLevelKey === "low"
-      ? "text-success bg-success/10"
-      : riskLevelKey === "moderate"
-      ? "text-warning bg-warning/10"
-      : "text-danger bg-danger/10";
 
   if (isScreeningLocked()) {
     return <ScreeningLockedNotice />;
@@ -336,13 +337,8 @@ const VoiceTest = () => {
 
         {analysisResult && (
           <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4">
-            <p className="text-sm text-muted-foreground text-center">Risk Level</p>
-            <p className={`text-2xl font-bold text-center mb-3 rounded-lg py-1 ${riskLevelColor}`}>
-              {analysisResult.risk_level}
-            </p>
+            <p className="text-sm text-muted-foreground text-center mb-3">Voice Test Completed</p>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <p className="text-muted-foreground">Risk Score</p>
-              <p className="text-right font-medium">{analysisResult.risk_score}</p>
               <p className="text-muted-foreground">Average Pitch</p>
               <p className="text-right font-medium">{analysisResult.average_pitch} Hz</p>
               <p className="text-muted-foreground">Pitch Variation</p>
@@ -352,6 +348,13 @@ const VoiceTest = () => {
               <p className="text-muted-foreground">Duration</p>
               <p className="text-right font-medium">{analysisResult.duration}s</p>
             </div>
+            <button
+              type="button"
+              onClick={() => navigate("/neck-scan")}
+              className="mt-4 w-full rounded-xl bg-primary text-primary-foreground py-2 font-semibold"
+            >
+              Continue to Neck Scan
+            </button>
           </div>
         )}
 

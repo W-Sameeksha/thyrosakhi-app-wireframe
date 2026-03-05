@@ -320,7 +320,7 @@ const SymptomAssistant = () => {
 
     recognition.onend = () => {
       setIsListening(false);
-      if (!hasResult && stage !== "locked" && stage !== "stopped" && stage !== "completed") {
+      if (!hasResult) {
         handleUnclearResponse();
       }
     };

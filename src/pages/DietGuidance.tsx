@@ -1,3 +1,5 @@
+import type { SyntheticEvent } from "react";
+import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Check, X } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -5,6 +7,61 @@ import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
 import { isScreeningLocked } from "@/lib/screeningLock";
+
+type RiskDietLevel = "low" | "moderate" | "high";
+
+type FoodRecommendation = {
+  name: string;
+  icon: string;
+  allergens?: string[];
+};
+
+const DEFAULT_FOOD_ICON = "https://img.icons8.com/color/48/healthy-food.png";
+
+const thyroidDietRecommendations: Record<RiskDietLevel, { title: string; foods: FoodRecommendation[] }> = {
+  low: {
+    title: "Maintain Healthy Thyroid Function",
+    foods: [
+      { name: "Eggs", icon: "https://img.icons8.com/color/48/egg.png", allergens: ["Egg"] },
+      { name: "Milk", icon: "https://img.icons8.com/color/48/milk.png", allergens: ["Dairy"] },
+      { name: "Whole grains", icon: "https://img.icons8.com/color/48/wheat.png", allergens: ["Gluten"] },
+      { name: "Fresh fruits", icon: "https://img.icons8.com/color/48/apple.png" },
+    ],
+  },
+  moderate: {
+    title: "Support Thyroid Health",
+    foods: [
+      { name: "Brazil nuts", icon: "https://img.icons8.com/color/48/nuts.png", allergens: ["Nuts"] },
+      { name: "Sunflower seeds", icon: "https://img.icons8.com/color/48/sunflower.png" },
+      { name: "Pumpkin seeds", icon: "https://img.icons8.com/color/48/pumpkin.png" },
+      { name: "Walnuts", icon: "https://img.icons8.com/color/48/walnut.png", allergens: ["Nuts"] },
+    ],
+  },
+  high: {
+    title: "Possible Thyroid Risk Detected",
+    foods: [
+      { name: "Leafy greens", icon: "https://img.icons8.com/color/48/lettuce.png" },
+      { name: "Berries", icon: "https://img.icons8.com/color/48/blueberries.png" },
+      { name: "Oats", icon: "https://img.icons8.com/color/48/oats.png", allergens: ["Gluten"] },
+      { name: "Fish", icon: "https://img.icons8.com/color/48/fish-food.png", allergens: ["Fish"] },
+    ],
+  },
+};
+
+const ALLERGY_OPTIONS = ["Nuts", "Dairy", "Egg", "Fish", "Gluten"];
+
+const iconForRecommendation = (recommendation: string): string => {
+  const text = recommendation.toLowerCase();
+
+  if (text.includes("egg")) return "https://img.icons8.com/color/48/egg.png";
+  if (text.includes("milk") || text.includes("dairy")) return "https://img.icons8.com/color/48/milk.png";
+  if (text.includes("fish")) return "https://img.icons8.com/color/48/fish-food.png";
+  if (text.includes("seed")) return "https://img.icons8.com/color/48/sunflower.png";
+  if (text.includes("nut")) return "https://img.icons8.com/color/48/nuts.png";
+  if (text.includes("fruit")) return "https://img.icons8.com/color/48/apple.png";
+
+  return DEFAULT_FOOD_ICON;
+};
 
 const dosEN = [
   { food: "🌾 Ragi (Finger Millet)", tip: "Rich in calcium, great for thyroid" },
@@ -44,8 +101,45 @@ const DietGuidance = () => {
   const screeningLocked = isScreeningLocked();
   const dos = language === "te" ? dosTE : dosEN;
   const donts = language === "te" ? dontsTE : dontsEN;
-  const dietaryRecommendations =
-    (location.state as { dietaryRecommendations?: string[] } | null)?.dietaryRecommendations ?? [];
+  const routeState = (location.state as { dietaryRecommendations?: string[]; riskLevel?: string } | null) ?? null;
+  const dietaryRecommendations = routeState?.dietaryRecommendations ?? [];
+  const requestedRiskLevel = routeState?.riskLevel;
+  const normalizedRiskLevel: RiskDietLevel | null =
+    requestedRiskLevel === "low"
+      ? "low"
+      : requestedRiskLevel === "high"
+        ? "high"
+        : requestedRiskLevel === "medium" || requestedRiskLevel === "moderate"
+          ? "moderate"
+          : null;
+
+  const riskBasedDiet = normalizedRiskLevel ? thyroidDietRecommendations[normalizedRiskLevel] : null;
+  const fallbackFoods: FoodRecommendation[] = dietaryRecommendations.map((recommendation) => ({
+    name: recommendation,
+    icon: iconForRecommendation(recommendation),
+  }));
+  const activeTitle = riskBasedDiet?.title;
+  const activeFoods = riskBasedDiet?.foods ?? fallbackFoods;
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+
+  const toggleAllergy = (allergy: string) => {
+    setSelectedAllergies((previous) =>
+      previous.includes(allergy)
+        ? previous.filter((item) => item !== allergy)
+        : [...previous, allergy]
+    );
+  };
+
+  const filteredFoods = activeFoods.filter(
+    (food) => !(food.allergens ?? []).some((allergen) => selectedAllergies.includes(allergen))
+  );
+
+  const handleFoodIconError = (event: SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    if (image.src !== DEFAULT_FOOD_ICON) {
+      image.src = DEFAULT_FOOD_ICON;
+    }
+  };
 
   if (screeningLocked) {
     return <ScreeningLockedNotice />;
@@ -55,19 +149,50 @@ const DietGuidance = () => {
     <div className="min-h-screen bg-background pb-20">
       <PageHeader titleKey="diet.title" />
       <div className="px-5 pt-4 space-y-6">
-        {dietaryRecommendations.length > 0 && (
+        <section className="bg-card p-4 rounded-2xl border border-border space-y-3">
+          <p className="text-sm font-semibold text-foreground">Any allergic preferences?</p>
+          <div className="flex flex-wrap gap-2">
+            {ALLERGY_OPTIONS.map((allergy) => {
+              const selected = selectedAllergies.includes(allergy);
+              return (
+                <button
+                  key={allergy}
+                  type="button"
+                  onClick={() => toggleAllergy(allergy)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                    selected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border"
+                  }`}
+                >
+                  {allergy}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {activeFoods.length > 0 && (
           <section className="bg-primary/5 p-4 rounded-2xl space-y-3">
-            <p className="text-sm text-foreground">
-              Based on your risk level, these dietary suggestions may help support thyroid health.
-            </p>
+            {activeTitle && <p className="text-sm text-foreground font-semibold">{activeTitle}</p>}
             <ul className="space-y-2">
-              {dietaryRecommendations.map((recommendation, index) => (
-                <li key={`${recommendation}-${index}`} className="flex items-start gap-2 text-sm text-foreground">
+              {filteredFoods.map((food, index) => (
+                <li key={`${food.name}-${index}`} className="flex items-center gap-2 text-sm text-foreground my-2">
                   <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
-                  <span>{recommendation}</span>
+                  <img
+                    src={food.icon}
+                    alt={food.name}
+                    className="w-7 h-7 shrink-0"
+                    loading="lazy"
+                    onError={handleFoodIconError}
+                  />
+                  <span>{food.name}</span>
                 </li>
               ))}
             </ul>
+            {filteredFoods.length === 0 && (
+              <p className="text-sm text-muted-foreground">No matching foods for selected allergy preferences.</p>
+            )}
           </section>
         )}
 
