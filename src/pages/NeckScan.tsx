@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Camera, Zap, ZapOff, CheckCircle, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked, saveNeckResult } from "@/lib/screeningLock";
+import { getNextScreeningRoute, isScreeningLocked, saveNeckResult } from "@/lib/screeningLock";
 
 const NeckScan = () => {
   const { t } = useLanguage();
@@ -150,8 +150,9 @@ const NeckScan = () => {
       });
 
       navigate("/processing", {
+        replace: true,
         state: {
-          neckAnalysis: result,
+          nextRoute: getNextScreeningRoute(),
         },
       });
     } catch (error) {

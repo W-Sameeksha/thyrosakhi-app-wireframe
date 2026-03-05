@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Mic } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked, saveVoiceResult } from "@/lib/screeningLock";
+import { getNextScreeningRoute, isScreeningLocked, saveVoiceResult } from "@/lib/screeningLock";
 
 const MAX_RECORD_SECONDS = 10;
 const ANALYSIS_TIMEOUT_MS = 30000;
@@ -17,7 +17,6 @@ type VoiceAnalysisResponse = {
   duration: number;
   risk_score: number;
   risk_level: string;
-  dietary_recommendations?: string[];
 };
 
 const writeString = (view: DataView, offset: number, value: string) => {
@@ -76,7 +75,6 @@ const VoiceTest = () => {
   const [recording, setRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(MAX_RECORD_SECONDS);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<VoiceAnalysisResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const [latitude, setLatitude] = useState<number | null>(null);
@@ -151,7 +149,6 @@ const VoiceTest = () => {
         }
 
         const analysisData = data as VoiceAnalysisResponse;
-        setAnalysisResult(analysisData);
         saveVoiceResult({
           average_pitch: analysisData.average_pitch,
           pitch_variation: analysisData.pitch_variation,
@@ -161,13 +158,12 @@ const VoiceTest = () => {
           risk_level: analysisData.risk_level,
         });
 
-        if (analysisData.dietary_recommendations?.length) {
-          navigate("/diet", {
-            state: {
-              dietaryRecommendations: analysisData.dietary_recommendations,
-            },
-          });
-        }
+        navigate("/processing", {
+          replace: true,
+          state: {
+            nextRoute: getNextScreeningRoute(),
+          },
+        });
       } catch (error) {
         const message =
           error instanceof DOMException && error.name === "AbortError"
@@ -198,7 +194,6 @@ const VoiceTest = () => {
 
   const startRecording = useCallback(async () => {
     setErrorText(null);
-    setAnalysisResult(null);
     audioChunksRef.current = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -333,29 +328,6 @@ const VoiceTest = () => {
           <p className="text-foreground font-semibold text-xl">Analyzing voice... this may take a moment.</p>
         ) : (
           <p className="text-muted-foreground text-body">{t("voice.tapToRecord")}</p>
-        )}
-
-        {analysisResult && (
-          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4">
-            <p className="text-sm text-muted-foreground text-center mb-3">Voice Test Completed</p>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <p className="text-muted-foreground">Average Pitch</p>
-              <p className="text-right font-medium">{analysisResult.average_pitch} Hz</p>
-              <p className="text-muted-foreground">Pitch Variation</p>
-              <p className="text-right font-medium">{analysisResult.pitch_variation}</p>
-              <p className="text-muted-foreground">Energy</p>
-              <p className="text-right font-medium">{analysisResult.energy}</p>
-              <p className="text-muted-foreground">Duration</p>
-              <p className="text-right font-medium">{analysisResult.duration}s</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate("/neck-scan")}
-              className="mt-4 w-full rounded-xl bg-primary text-primary-foreground py-2 font-semibold"
-            >
-              Continue to Neck Scan
-            </button>
-          </div>
         )}
 
         {errorText && (

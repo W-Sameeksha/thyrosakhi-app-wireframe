@@ -131,3 +131,23 @@ export const getScreeningCompletion = () => {
     isComplete: Boolean(symptoms && voice && neck),
   };
 };
+
+export type ScreeningRoute = "/symptom-assistant" | "/voice-test" | "/neck-scan" | "/risk-score";
+
+export const getNextScreeningRoute = (): ScreeningRoute => {
+  const completion = getScreeningCompletion();
+
+  if (!completion.hasSymptoms) {
+    return "/symptom-assistant";
+  }
+
+  if (!completion.hasVoice) {
+    return "/voice-test";
+  }
+
+  if (!completion.hasNeck) {
+    return "/neck-scan";
+  }
+
+  return "/risk-score";
+};

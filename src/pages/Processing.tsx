@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Heart } from "lucide-react";
 import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
-import { isScreeningLocked } from "@/lib/screeningLock";
+import { getScreeningCompletion, isScreeningLocked } from "@/lib/screeningLock";
 
 type NeckAnalysisResult = {
   neck_score: number;
@@ -24,9 +24,18 @@ const Processing = () => {
       return;
     }
 
+    const completion = getScreeningCompletion();
+    const nextRoute = !completion.hasSymptoms
+      ? "/symptom-assistant"
+      : !completion.hasVoice
+        ? "/voice-test"
+        : !completion.hasNeck
+          ? "/neck-scan"
+          : "/risk-score";
+
     const timer = setTimeout(
       () =>
-        navigate("/risk-score", {
+        navigate(nextRoute, {
           replace: true,
           state: neckAnalysis ? { neckAnalysis } : undefined,
         }),
