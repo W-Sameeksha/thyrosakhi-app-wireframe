@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader";
+import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 type NeckAnalysisResult = {
   image_result: string;
@@ -15,7 +17,12 @@ const RiskScore = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const screeningLocked = isScreeningLocked();
   const neckAnalysis = (location.state as { neckAnalysis?: NeckAnalysisResult } | null)?.neckAnalysis;
+
+  if (screeningLocked) {
+    return <ScreeningLockedNotice />;
+  }
 
   const score = (() => {
     if (!neckAnalysis) {

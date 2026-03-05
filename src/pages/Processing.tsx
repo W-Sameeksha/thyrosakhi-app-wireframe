@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Heart } from "lucide-react";
+import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 type NeckAnalysisResult = {
   image_result: string;
@@ -15,9 +17,14 @@ const Processing = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const screeningLocked = isScreeningLocked();
   const neckAnalysis = (location.state as { neckAnalysis?: NeckAnalysisResult } | null)?.neckAnalysis;
 
   useEffect(() => {
+    if (screeningLocked) {
+      return;
+    }
+
     const timer = setTimeout(
       () =>
         navigate("/risk-score", {
@@ -27,7 +34,11 @@ const Processing = () => {
       3000
     );
     return () => clearTimeout(timer);
-  }, [navigate, neckAnalysis]);
+  }, [navigate, neckAnalysis, screeningLocked]);
+
+  if (screeningLocked) {
+    return <ScreeningLockedNotice />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-8 gap-8">

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import SplashScreen from "./pages/SplashScreen";
 import LanguageSelection from "./pages/LanguageSelection";
+import SymptomAssistant from "./pages/SymptomAssistant";
 import Home from "./pages/Home";
 import VoiceTest from "./pages/VoiceTest";
 import NeckScan from "./pages/NeckScan";
@@ -31,6 +32,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<SplashScreen />} />
               <Route path="/language" element={<LanguageSelection />} />
+              <Route path="/symptom-assistant" element={<SymptomAssistant />} />
               <Route path="/home" element={<Home />} />
               <Route path="/voice-test" element={<VoiceTest />} />
               <Route path="/neck-scan" element={<NeckScan />} />

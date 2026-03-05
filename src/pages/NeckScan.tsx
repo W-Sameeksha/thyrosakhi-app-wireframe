@@ -4,10 +4,13 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Camera, Zap, ZapOff, CheckCircle, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 const NeckScan = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const screeningLocked = isScreeningLocked();
   const [flash, setFlash] = useState(false);
   const [captured, setCaptured] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -88,14 +91,22 @@ const NeckScan = () => {
   }, [stopCameraStream]);
 
   useEffect(() => {
+    if (screeningLocked) {
+      return;
+    }
+
     startCamera();
 
     return () => {
       stopCameraStream();
     };
-  }, [startCamera, stopCameraStream]);
+  }, [screeningLocked, startCamera, stopCameraStream]);
 
   const handleCapture = async () => {
+    if (screeningLocked) {
+      return;
+    }
+
     if (!videoRef.current || !canvasRef.current || !cameraReady) {
       return;
     }
@@ -153,6 +164,10 @@ const NeckScan = () => {
       setAnalyzing(false);
     }
   };
+
+  if (screeningLocked) {
+    return <ScreeningLockedNotice />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

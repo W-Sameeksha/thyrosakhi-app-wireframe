@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Mic, Camera, Salad, MapPin, Activity } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 const quickActions = [
   { key: "home.voiceTest", icon: Mic, path: "/voice-test", color: "bg-primary/10 text-primary" },
@@ -14,6 +15,7 @@ const quickActions = [
 const Home = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const screeningLocked = isScreeningLocked();
 
   // Mock last score
   const lastScore: number | null = 72;
@@ -34,12 +36,19 @@ const Home = () => {
         {/* Start Health Check CTA */}
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => navigate("/voice-test")}
+          onClick={() => navigate("/symptom-assistant")}
+          disabled={screeningLocked}
           className="w-full py-5 bg-secondary text-secondary-foreground rounded-2xl font-bold text-xl shadow-lg flex items-center justify-center gap-3"
         >
           <Activity className="w-7 h-7" />
           {t("home.startCheck")}
         </motion.button>
+
+        {screeningLocked && (
+          <p className="text-sm text-warning text-center bg-warning/10 rounded-xl p-3">
+            Screening is temporarily unavailable until your cold or cough is resolved.
+          </p>
+        )}
 
         {/* Last Score */}
         <div className={`rounded-2xl p-5 ${scoreBg}`}>
@@ -63,7 +72,11 @@ const Home = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate(action.path)}
+              onClick={() => navigate(action.key === "home.voiceTest" ? "/symptom-assistant" : action.path)}
+              disabled={
+                screeningLocked &&
+                ["home.voiceTest", "home.neckScan", "home.dietTips"].includes(action.key)
+              }
               className={`flex flex-col items-center gap-3 p-5 rounded-2xl ${action.color} font-semibold text-body transition-shadow hover:shadow-md`}
             >
               <action.icon className="w-8 h-8" />

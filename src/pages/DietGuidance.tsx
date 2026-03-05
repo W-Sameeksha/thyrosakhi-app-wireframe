@@ -3,6 +3,8 @@ import { Check, X } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import PageHeader from "@/components/PageHeader";
+import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 const dosEN = [
   { food: "🌾 Ragi (Finger Millet)", tip: "Rich in calcium, great for thyroid" },
@@ -39,10 +41,15 @@ const dontsTE = [
 const DietGuidance = () => {
   const { t, language } = useLanguage();
   const location = useLocation();
+  const screeningLocked = isScreeningLocked();
   const dos = language === "te" ? dosTE : dosEN;
   const donts = language === "te" ? dontsTE : dontsEN;
   const dietaryRecommendations =
     (location.state as { dietaryRecommendations?: string[] } | null)?.dietaryRecommendations ?? [];
+
+  if (screeningLocked) {
+    return <ScreeningLockedNotice />;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">

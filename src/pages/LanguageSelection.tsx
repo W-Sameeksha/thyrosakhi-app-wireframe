@@ -9,7 +9,7 @@ const LanguageSelection = () => {
 
   const select = (lang: "en" | "te") => {
     setLanguage(lang);
-    navigate("/home", { replace: true });
+    navigate("/symptom-assistant", { replace: true });
   };
 
   return (

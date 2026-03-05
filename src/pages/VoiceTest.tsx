@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Mic } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import SymptomChatbot from "@/components/SymptomChatbot";
+import ScreeningLockedNotice from "@/components/ScreeningLockedNotice";
+import { isScreeningLocked } from "@/lib/screeningLock";
 
 const MAX_RECORD_SECONDS = 10;
-const ANALYSIS_TIMEOUT_MS = 120000;
+const ANALYSIS_TIMEOUT_MS = 30000;
 
 type VoiceAnalysisResponse = {
   average_pitch: number;
@@ -77,7 +78,6 @@ const VoiceTest = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<VoiceAnalysisResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [isVoiceAnalysisEnabled, setIsVoiceAnalysisEnabled] = useState(true);
 
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -164,6 +164,8 @@ const VoiceTest = () => {
         const message =
           error instanceof DOMException && error.name === "AbortError"
             ? "Analysis timed out. Please try again."
+            : error instanceof TypeError
+            ? "Unable to reach analysis server. Please make sure backend is running on http://localhost:5000."
             : error instanceof Error
             ? error.message
             : "Analysis failed";
@@ -216,13 +218,6 @@ const VoiceTest = () => {
   }, [analyzeVoice]);
 
   const handleMicClick = useCallback(async () => {
-    if (!isVoiceAnalysisEnabled) {
-      setErrorText(
-        "Voice analysis is disabled while cold or cough symptoms are present. Please return once symptoms resolve."
-      );
-      return;
-    }
-
     if (recording) {
       stopRecording();
       return;
@@ -244,7 +239,7 @@ const VoiceTest = () => {
           : "Unable to access location or microphone. Please allow required permissions.";
       setErrorText(message);
     }
-  }, [recording, startRecording, stopRecording, getUserCoordinates, isVoiceAnalysisEnabled]);
+  }, [recording, startRecording, stopRecording, getUserCoordinates]);
 
   useEffect(() => {
     if (!recording) return;
@@ -275,6 +270,10 @@ const VoiceTest = () => {
       ? "text-warning bg-warning/10"
       : "text-danger bg-danger/10";
 
+  if (isScreeningLocked()) {
+    return <ScreeningLockedNotice />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader titleKey="voice.title" />
@@ -285,9 +284,6 @@ const VoiceTest = () => {
             "{t("voice.sentence")}"
           </p>
         </div>
-
-        <SymptomChatbot onAnalysisAvailabilityChange={setIsVoiceAnalysisEnabled} />
-
         <div className="relative flex items-center justify-center">
           {/* Timer ring */}
           <svg className="w-36 h-36 -rotate-90" viewBox="0 0 100 100">
@@ -312,13 +308,11 @@ const VoiceTest = () => {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleMicClick}
-            disabled={analyzing || !isVoiceAnalysisEnabled}
+            disabled={analyzing}
             className={`absolute w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-colors ${
               recording
                 ? "bg-danger text-danger-foreground"
-                : isVoiceAnalysisEnabled
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                : "bg-primary text-primary-foreground"
             }`}
           >
             <Mic className="w-10 h-10" />
@@ -336,10 +330,6 @@ const VoiceTest = () => {
           </p>
         ) : analyzing ? (
           <p className="text-foreground font-semibold text-xl">Analyzing voice... this may take a moment.</p>
-        ) : !isVoiceAnalysisEnabled ? (
-          <p className="text-warning text-body text-center max-w-sm">
-            Voice analysis is disabled because cold/cough was reported.
-          </p>
         ) : (
           <p className="text-muted-foreground text-body">{t("voice.tapToRecord")}</p>
         )}

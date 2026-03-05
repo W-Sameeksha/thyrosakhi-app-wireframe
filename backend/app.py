@@ -13,6 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 ASYMMETRY_THRESHOLD = 20.0
+DETECTED_SKIN_PIXEL_THRESHOLD = 1200
 
 
 def calculate_final_risk(voice_score: float, symptom_score: float, neck_score: float) -> tuple[float, str]:
@@ -126,10 +127,18 @@ def analyze_voice() -> tuple:
         uploaded_file.save(temp_path)
         audio_data, sample_rate = librosa.load(temp_path, sr=None, mono=True)
 
-        f0, _, _ = librosa.pyin(
+        duration = float(len(audio_data) / sample_rate) if sample_rate else 0.0
+        if duration <= 0.1:
+            return jsonify({"error": "Audio is too short. Please record at least 1 second."}), 400
+
+        rms = librosa.feature.rms(y=audio_data)
+        energy = float(np.mean(rms)) if rms.size > 0 else 0.0
+
+        f0 = librosa.yin(
             audio_data,
             fmin=librosa.note_to_hz("C2"),
             fmax=librosa.note_to_hz("C7"),
+            sr=sample_rate,
         )
         voiced_f0 = f0[~np.isnan(f0)]
 
@@ -140,10 +149,38 @@ def analyze_voice() -> tuple:
             average_pitch = 0.0
             pitch_variation = 0.0
 
+        risk_score = 0
+        if average_pitch < 130:
+            risk_score += 1
+        if pitch_variation < 18:
+            risk_score += 1
+        if energy < 0.03:
+            risk_score += 1
+
+        if risk_score <= 1:
+            risk_level = "Low"
+        elif risk_score == 2:
+            risk_level = "Moderate"
+        else:
+            risk_level = "High"
+
+        dietary_recommendations = []
+        if risk_level == "Moderate":
+            dietary_recommendations = [
+                "Include iodine-rich foods like eggs, dairy, and fish.",
+                "Add selenium sources such as nuts and seeds.",
+                "Stay hydrated and reduce ultra-processed foods.",
+            ]
+
         return jsonify(
             {
-                "average_pitch": average_pitch,
-                "pitch_variation": pitch_variation,
+                "average_pitch": round(average_pitch, 2),
+                "pitch_variation": round(pitch_variation, 2),
+                "energy": round(energy, 4),
+                "duration": round(duration, 2),
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "dietary_recommendations": dietary_recommendations,
             }
         ), 200
     except Exception as exc:
@@ -223,7 +260,44 @@ def analyze_neck() -> tuple:
         if image is None:
             return jsonify({"error": "Failed to load neck image"}), 400
 
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        resized_image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
+
+        crop_width = int(256 * 0.40)
+        crop_start = (256 - crop_width) // 2
+        crop_end = crop_start + crop_width
+        center_region = resized_image[:, crop_start:crop_end]
+
+        if center_region.size == 0:
+            return jsonify({"error": "Failed to isolate center neck region"}), 400
+
+        hsv_image = cv2.cvtColor(center_region, cv2.COLOR_BGR2HSV)
+        lower_skin_1 = np.array([0, 15, 30], dtype=np.uint8)
+        upper_skin_1 = np.array([35, 255, 255], dtype=np.uint8)
+        lower_skin_2 = np.array([160, 15, 30], dtype=np.uint8)
+        upper_skin_2 = np.array([179, 255, 255], dtype=np.uint8)
+
+        mask_1 = cv2.inRange(hsv_image, lower_skin_1, upper_skin_1)
+        mask_2 = cv2.inRange(hsv_image, lower_skin_2, upper_skin_2)
+        skin_mask = cv2.bitwise_or(mask_1, mask_2)
+
+        kernel = np.ones((3, 3), np.uint8)
+        skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
+        skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
+
+        skin_pixel_count = int(np.count_nonzero(skin_mask))
+        if skin_pixel_count == 0:
+            fallback_lower = np.array([0, 0, 20], dtype=np.uint8)
+            fallback_upper = np.array([179, 255, 255], dtype=np.uint8)
+            skin_mask = cv2.inRange(hsv_image, fallback_lower, fallback_upper)
+            skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_OPEN, kernel)
+            skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, kernel)
+            skin_pixel_count = int(np.count_nonzero(skin_mask))
+
+        if skin_pixel_count < DETECTED_SKIN_PIXEL_THRESHOLD:
+            return jsonify({"error": "Image unclear, please retake the photo"}), 400
+
+        masked_region = cv2.bitwise_and(center_region, center_region, mask=skin_mask)
+        gray_image = cv2.cvtColor(masked_region, cv2.COLOR_BGR2GRAY)
         equalized_image = cv2.equalizeHist(gray_image)
 
         blurred_image = cv2.GaussianBlur(equalized_image, (5, 5), 0)
@@ -239,9 +313,27 @@ def analyze_neck() -> tuple:
         right_half = equalized_image[:, width - half_width :]
         right_flipped = cv2.flip(right_half, 1)
 
-        diff_image = cv2.absdiff(left_half, right_flipped)
-        mean_difference = float(np.mean(diff_image))
-        asymmetry_flag = mean_difference > ASYMMETRY_THRESHOLD
+        left_mask = skin_mask[:, :half_width]
+        right_mask = skin_mask[:, width - half_width :]
+        right_mask_flipped = cv2.flip(right_mask, 1)
+        valid_mask = cv2.bitwise_and(left_mask, right_mask_flipped)
+
+        valid_pixels = valid_mask > 0
+        if not np.any(valid_pixels):
+            return jsonify({"error": "Insufficient skin overlap for symmetry analysis"}), 400
+
+        absolute_difference = np.abs(left_half.astype(np.float32) - right_flipped.astype(np.float32))
+        mean_difference = float(np.mean(absolute_difference[valid_pixels]))
+        symmetry_score = mean_difference / 255.0
+
+        if symmetry_score < 0.08:
+            neck_risk = 0
+        elif symmetry_score < 0.18:
+            neck_risk = 1
+        else:
+            neck_risk = 2
+
+        asymmetry_flag = neck_risk >= 1
 
         upper_width = max_horizontal_width_in_band(edges, 0, height // 3)
         middle_width = max_horizontal_width_in_band(edges, height // 3, (2 * height) // 3)
@@ -264,7 +356,8 @@ def analyze_neck() -> tuple:
 
         return jsonify(
             {
-                "symmetry_score": round(mean_difference, 2),
+                "symmetry_score": round(symmetry_score, 4),
+                "neck_risk": neck_risk,
                 "visible_asymmetry": asymmetry_flag,
                 "swelling_flag": swelling_flag,
                 "image_result": image_result,
