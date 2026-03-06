@@ -167,9 +167,9 @@ const VoiceTest = () => {
       } catch (error) {
         const message =
           error instanceof DOMException && error.name === "AbortError"
-            ? "Analysis timed out. Please try again."
+            ? t("voice.analysisTimeout")
             : error instanceof TypeError
-            ? "Unable to reach analysis server. Please make sure backend is running."
+            ? t("voice.serverUnavailable")
             : error instanceof Error
             ? error.message
             : "Analysis failed";
@@ -178,7 +178,7 @@ const VoiceTest = () => {
         setAnalyzing(false);
       }
     },
-    [navigate]
+    [navigate, t]
   );
 
   const stopRecording = useCallback(() => {
@@ -325,7 +325,7 @@ const VoiceTest = () => {
             {timeLeft} {t("voice.timeLeft")}
           </p>
         ) : analyzing ? (
-          <p className="text-foreground font-semibold text-xl">Analyzing voice... this may take a moment.</p>
+          <p className="text-foreground font-semibold text-xl">{t("voice.analyzingVoice")}</p>
         ) : (
           <p className="text-muted-foreground text-body">{t("voice.tapToRecord")}</p>
         )}

@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Mic, Camera, Salad, MapPin, Activity, RotateCcw } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { isScreeningLocked, resetScreeningData } from "@/lib/screeningLock";
+import { isScreeningLocked, resetScreeningData, getHistory } from "@/lib/screeningLock";
 
 const quickActions = [
   { key: "home.voiceTest", icon: Mic, path: "/voice-test", color: "bg-primary/10 text-primary" },
@@ -15,6 +16,7 @@ const quickActions = [
 const Home = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const screeningLocked = isScreeningLocked();
 
   const handleResetScreening = () => {
@@ -22,8 +24,10 @@ const Home = () => {
     window.location.reload();
   };
 
-  // Mock last score
-  const lastScore: number | null = 72;
+  // Get last health score from history
+  const history = getHistory();
+  const lastScore: number | null = history.length > 0 ? history[0].score : null;
+  const lastTestDate = history.length > 0 ? new Date(history[0].date) : null;
   const scoreColor = lastScore === null ? "" : lastScore >= 70 ? "text-success" : lastScore >= 40 ? "text-warning" : "text-danger";
   const scoreBg = lastScore === null ? "bg-muted" : lastScore >= 70 ? "bg-success/10" : lastScore >= 40 ? "bg-warning/10" : "bg-danger/10";
 
@@ -31,9 +35,16 @@ const Home = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-primary px-6 pt-10 pb-8 rounded-b-[2rem]">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <p className="text-primary-foreground/70 text-body">{t("home.welcome")} 👋</p>
-          <h1 className="text-2xl font-extrabold text-primary-foreground mt-1">{t("home.greeting")}</h1>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between">
+          <div>
+            <p className="text-primary-foreground/70 text-body">
+              {t("home.welcome")}{user?.name ? `, ${user.name.split(" ")[0]}` : ""} 👋
+            </p>
+            <h1 className="text-2xl font-extrabold text-primary-foreground mt-1">{t("home.greeting")}</h1>
+          </div>
+          <div className="bg-white/20 px-3 py-2 rounded-xl">
+            <span className="text-sm font-bold text-primary-foreground">THYRO-TRACK</span>
+          </div>
         </motion.div>
       </div>
 
@@ -51,7 +62,7 @@ const Home = () => {
 
         {screeningLocked && (
           <p className="text-sm text-warning text-center bg-warning/10 rounded-xl p-3">
-            Screening is temporarily unavailable until your cold or cough is resolved.
+            {t("home.coldWarning")}
           </p>
         )}
 
@@ -59,9 +70,16 @@ const Home = () => {
         <div className={`rounded-2xl p-5 ${scoreBg}`}>
           <p className="text-sm font-semibold text-muted-foreground mb-1">{t("home.lastScore")}</p>
           {lastScore !== null ? (
-            <div className="flex items-baseline gap-2">
-              <span className={`text-4xl font-extrabold ${scoreColor}`}>{lastScore}</span>
-              <span className="text-muted-foreground text-sm">/100</span>
+            <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-4xl font-extrabold ${scoreColor}`}>{lastScore}</span>
+                <span className="text-muted-foreground text-sm">/100</span>
+              </div>
+              {lastTestDate && (
+                <span className="text-xs text-muted-foreground">
+                  {lastTestDate.toLocaleDateString()}
+                </span>
+              )}
             </div>
           ) : (
             <p className="text-muted-foreground text-body">{t("home.noScore")}</p>
@@ -97,7 +115,7 @@ const Home = () => {
           className="w-full py-3 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
-          Reset Screening Data
+          {t("common.resetScreening")}
         </button>
       </div>
 

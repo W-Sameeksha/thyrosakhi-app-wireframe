@@ -47,7 +47,7 @@ const NeckGuideOverlay = ({ t }: { t: (key: string) => string }) => {
           <span className="text-primary text-xs font-semibold bg-black/40 px-2 py-0.5 rounded mb-1">
             {t("neck.neckRegion")}
           </span>
-          <span className="text-primary/80 text-[10px]">↓ Thyroid Area ↓</span>
+          <span className="text-primary/80 text-[10px]">{t("neck.thyroidArea")}</span>
         </div>
       </div>
 
@@ -106,12 +106,12 @@ const NeckScan = () => {
     const isLocalHost =
       window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
     if (!window.isSecureContext && !isLocalHost) {
-      setCameraError("Camera needs HTTPS or localhost. Open the app on localhost.");
+      setCameraError(t("neck.needsHttps"));
       return;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError("Camera API not supported in this browser.");
+      setCameraError(t("neck.notSupported"));
       return;
     }
 
@@ -144,19 +144,19 @@ const NeckScan = () => {
           .play()
           .then(() => setCameraReady(true))
           .catch(() => {
-            setCameraError("Tap Retry Camera to start preview.");
+            setCameraError(t("neck.tapRetry"));
           });
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "NotAllowedError") {
-        setCameraError("Camera permission denied. Please allow camera access.");
+        setCameraError(t("neck.permissionDenied"));
         return;
       }
       if (error instanceof DOMException && error.name === "NotFoundError") {
-        setCameraError("No camera device found on this system.");
+        setCameraError(t("neck.noDevice"));
         return;
       }
-      setCameraError("Unable to access camera. Please check browser camera settings.");
+      setCameraError(t("neck.unableToAccess"));
     }
   }, [stopCameraStream]);
 
@@ -294,14 +294,14 @@ const NeckScan = () => {
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground font-semibold text-sm"
         >
           {flash ? <Zap className="w-5 h-5 text-warning" /> : <ZapOff className="w-5 h-5" />}
-          {t("neck.flash")} {flash ? "ON" : "OFF"}
+          {t("neck.flash")} {flash ? t("neck.on") : t("neck.off")}
         </button>
 
         {/* Quality indicator */}
         {captured ? (
           <div className="flex items-center gap-2 text-success font-semibold">
             <CheckCircle className="w-5 h-5" />
-            {analyzing ? "Analyzing neck image..." : t("neck.quality.good")}
+            {analyzing ? t("neck.analyzing") : t("neck.quality.good")}
           </div>
         ) : cameraError ? (
           <div className="flex items-center gap-2 text-danger text-sm">
@@ -327,7 +327,7 @@ const NeckScan = () => {
             onClick={startCamera}
             className="px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm font-semibold"
           >
-            Retry Camera
+            {t("neck.retryCamera")}
           </button>
         )}
 

@@ -2,6 +2,7 @@ export const SCREENING_LOCK_KEY = "thyrosakhi_screening_locked";
 export const SYMPTOM_DATA_KEY = "thyrosakhi_symptom_data";
 export const VOICE_RESULT_KEY = "thyrosakhi_voice_result";
 export const NECK_RESULT_KEY = "thyrosakhi_neck_result";
+export const HISTORY_KEY = "thyrosakhi_history";
 
 export type SymptomAnswers = {
   fatigue: boolean;
@@ -161,4 +162,101 @@ export const resetScreeningData = () => {
   window.localStorage.removeItem(VOICE_RESULT_KEY);
   window.localStorage.removeItem(NECK_RESULT_KEY);
   window.localStorage.removeItem(SCREENING_LOCK_KEY);
+};
+
+// History types and functions
+export type HistoryEntry = {
+  date: string;
+  score: number;
+  riskLevel: "low" | "medium" | "high";
+  symptomAnswers: SymptomAnswers;
+  voiceResult: VoiceTestResult;
+  neckResult: NeckTestResult;
+};
+
+export const getHistory = (): HistoryEntry[] => {
+  if (!hasWindow()) {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(HISTORY_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(raw) as HistoryEntry[];
+  } catch {
+    return [];
+  }
+};
+
+export const saveToHistory = (entry: HistoryEntry) => {
+  if (!hasWindow()) {
+    return;
+  }
+
+  const history = getHistory();
+  // Add new entry at the beginning
+  history.unshift(entry);
+  // Keep only the last 20 entries
+  const trimmedHistory = history.slice(0, 20);
+  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmedHistory));
+};
+
+export const calculateHealthScore = (
+  symptomAnswers: SymptomAnswers,
+  voiceResult: VoiceTestResult,
+  neckResult: NeckTestResult
+): { score: number; riskLevel: "low" | "medium" | "high" } => {
+  const symptomScore =
+    Number(symptomAnswers.fatigue) +
+    Number(symptomAnswers.weight_change) +
+    Number(symptomAnswers.hair_fall) +
+    Number(symptomAnswers.temperature_sensitivity) +
+    Number(symptomAnswers.irregular_cycles);
+
+  const voiceRisk = Math.min(Math.max(voiceResult.risk_score, 0), 3);
+  const neckRisk = Math.min(Math.max(neckResult.neck_score ?? 0, 0), 0.5);
+
+  const normalizedRisk =
+    (voiceRisk / 3) * 0.4 +
+    (symptomScore / 5) * 0.4 +
+    (neckRisk / 0.5) * 0.2;
+
+  const healthScore = Math.round((1 - normalizedRisk) * 100);
+  const score = Math.min(100, Math.max(0, healthScore));
+  const riskLevel = score >= 70 ? "low" : score >= 40 ? "medium" : "high";
+
+  return { score, riskLevel };
+};
+
+export const saveCurrentScreeningToHistory = () => {
+  const symptomAnswers = getSymptomAnswers();
+  const voiceResult = getVoiceResult();
+  const neckResult = getNeckResult();
+
+  if (!symptomAnswers || !voiceResult || !neckResult) {
+    return;
+  }
+
+  const { score, riskLevel } = calculateHealthScore(symptomAnswers, voiceResult, neckResult);
+
+  const entry: HistoryEntry = {
+    date: new Date().toISOString(),
+    score,
+    riskLevel,
+    symptomAnswers,
+    voiceResult,
+    neckResult,
+  };
+
+  saveToHistory(entry);
+};
+
+export const clearHistory = () => {
+  if (!hasWindow()) {
+    return;
+  }
+  window.localStorage.removeItem(HISTORY_KEY);
 };

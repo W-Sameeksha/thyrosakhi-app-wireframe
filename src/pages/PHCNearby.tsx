@@ -146,7 +146,7 @@ const PHCNearby = () => {
 
                 {clinic.distance_km && (
                   <p className="text-sm text-primary font-medium">
-                    📍 Distance: {clinic.distance_km.toFixed(1)} km
+                    📍 {t("phcNearby.distance")}: {clinic.distance_km.toFixed(1)} km
                   </p>
                 )}
 

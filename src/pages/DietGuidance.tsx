@@ -150,7 +150,7 @@ const DietGuidance = () => {
       <PageHeader titleKey="diet.title" />
       <div className="px-5 pt-4 space-y-6">
         <section className="bg-card p-4 rounded-2xl border border-border space-y-3">
-          <p className="text-sm font-semibold text-foreground">Any allergic preferences?</p>
+          <p className="text-sm font-semibold text-foreground">{t("diet.allergyPreferences")}</p>
           <div className="flex flex-wrap gap-2">
             {ALLERGY_OPTIONS.map((allergy) => {
               const selected = selectedAllergies.includes(allergy);
@@ -191,7 +191,7 @@ const DietGuidance = () => {
               ))}
             </ul>
             {filteredFoods.length === 0 && (
-              <p className="text-sm text-muted-foreground">No matching foods for selected allergy preferences.</p>
+              <p className="text-sm text-muted-foreground">{t("diet.noMatchingFoods")}</p>
             )}
           </section>
         )}

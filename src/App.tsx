@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import SplashScreen from "./pages/SplashScreen";
+import Login from "./pages/Login";
 import LanguageSelection from "./pages/LanguageSelection";
 import SymptomAssistant from "./pages/SymptomAssistant";
 import Home from "./pages/Home";
@@ -25,34 +27,37 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <div className="max-w-md mx-auto min-h-screen bg-background">
-            <Routes>
-              <Route path="/" element={<SplashScreen />} />
-              <Route path="/language" element={<LanguageSelection />} />
-              <Route path="/symptom-assistant" element={<SymptomAssistant />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/voice-test" element={<VoiceTest />} />
-              <Route path="/neck-scan" element={<NeckScan />} />
-              <Route path="/processing" element={<Processing />} />
-              <Route path="/risk-score" element={<RiskScore />} />
-              <Route path="/health-report" element={<HealthReport />} />
-              <Route path="/diet" element={<DietGuidance />} />
-              <Route path="/phc" element={<PHCSupport />} />
-              <Route path="/phc-nearby" element={<PHCNearby />} />
-              <Route path="/family-alert" element={<FamilyAlert />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/settings" element={<SettingsScreen />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
-        </BrowserRouter>
-      </TooltipProvider>
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <div className="max-w-md mx-auto min-h-screen bg-background">
+              <Routes>
+                <Route path="/" element={<SplashScreen />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/language" element={<LanguageSelection />} />
+                <Route path="/symptom-assistant" element={<SymptomAssistant />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/voice-test" element={<VoiceTest />} />
+                <Route path="/neck-scan" element={<NeckScan />} />
+                <Route path="/processing" element={<Processing />} />
+                <Route path="/risk-score" element={<RiskScore />} />
+                <Route path="/health-report" element={<HealthReport />} />
+                <Route path="/diet" element={<DietGuidance />} />
+                <Route path="/phc" element={<PHCSupport />} />
+                <Route path="/phc-nearby" element={<PHCNearby />} />
+                <Route path="/family-alert" element={<FamilyAlert />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/settings" element={<SettingsScreen />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </LanguageProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

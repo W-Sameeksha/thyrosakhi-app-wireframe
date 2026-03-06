@@ -64,12 +64,12 @@ const Processing = () => {
 
       {neckAnalysis && (
         <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-4 text-sm space-y-2">
-          <p className="font-semibold text-foreground">Neck Scan Result</p>
+          <p className="font-semibold text-foreground">{t("processing.neckResult")}</p>
           <p className="text-muted-foreground">{neckAnalysis.message}</p>
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <p className="text-muted-foreground">Neck Score</p>
+            <p className="text-muted-foreground">{t("processing.neckScore")}</p>
             <p className="text-right font-medium text-foreground">{neckAnalysis.neck_score}</p>
-            <p className="text-muted-foreground">Swelling Level</p>
+            <p className="text-muted-foreground">{t("processing.swellingLevel")}</p>
             <p className="text-right font-medium text-foreground capitalize">{neckAnalysis.swelling_level}</p>
           </div>
         </div>

@@ -14,14 +14,14 @@ const PHCSupport = () => {
         <div className="w-full aspect-video bg-muted rounded-2xl flex items-center justify-center border border-border">
           <div className="text-center text-muted-foreground">
             <MapPin className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Map view coming soon</p>
+            <p className="text-sm">{t("phc.mapComingSoon")}</p>
           </div>
         </div>
 
         {/* PHC Info Card */}
         <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3">
-          <h3 className="font-bold text-foreground">District PHC - Warangal</h3>
-          <p className="text-sm text-muted-foreground">Main Road, Near Bus Stand, Warangal - 506002</p>
+          <h3 className="font-bold text-foreground">{t("phc.clinicName")}</h3>
+          <p className="text-sm text-muted-foreground">{t("phc.clinicAddress")}</p>
           <div className="flex gap-3">
             <Button size="lg" className="flex-1 rounded-xl gap-2" onClick={() => window.open("https://maps.google.com", "_blank")}>
               <Navigation className="w-5 h-5" />

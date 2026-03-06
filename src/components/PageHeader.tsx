@@ -22,7 +22,14 @@ const PageHeader = ({ titleKey, showBack = true }: PageHeaderProps) => {
           <ArrowLeft className="w-6 h-6" />
         </button>
       )}
-      <h1 className="text-xl font-bold">{t(titleKey)}</h1>
+      <h1 className="text-xl font-bold flex-1">{t(titleKey)}</h1>
+      <button
+        onClick={() => navigate("/home")}
+        className="px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+        aria-label="Go to Home"
+      >
+        <span className="text-sm font-bold text-primary">THYRO-TRACK</span>
+      </button>
     </header>
   );
 };

@@ -2,6 +2,28 @@ export type Language = "en" | "te";
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
+    // Login
+    "login.title": "Create Your Profile",
+    "login.subtitle": "Your personal thyroid health companion",
+    "login.name": "Full Name",
+    "login.namePlaceholder": "Enter your name",
+    "login.nameRequired": "Name is required",
+    "login.nameMinLength": "Name must be at least 2 characters",
+    "login.phone": "Phone Number",
+    "login.phonePlaceholder": "10-digit mobile number",
+    "login.phoneRequired": "Phone number is required",
+    "login.phoneInvalid": "Please enter a valid 10-digit phone number",
+    "login.age": "Age",
+    "login.agePlaceholder": "Enter your age",
+    "login.ageRequired": "Age is required",
+    "login.ageInvalid": "Please enter a valid age (1-120)",
+    "login.email": "Email",
+    "login.emailPlaceholder": "your@email.com",
+    "login.optional": "optional",
+    "login.continue": "Continue",
+    "login.loading": "Please wait...",
+    "login.privacyNote": "Your information is secure and will only be used to personalize your experience.",
+
     // Splash
     "splash.tagline": "Early thyroid care, right from your phone",
     
@@ -55,6 +77,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "risk.high": "Higher Risk — Please visit a health center",
     "risk.nextSteps": "View Full Report",
     "risk.score": "Score",
+    "risk.highWarning": "⚠️ High thyroid risk detected. We recommend visiting a nearby healthcare center for proper diagnosis.",
+    "risk.findNearbyClinics": "Find Nearby Clinics",
+    "risk.geolocationNotSupported": "Geolocation is not supported by this browser.",
+    "risk.geolocationError": "Unable to get your location. Please try again.",
 
     // Health Report
     "report.title": "Health Summary Report",
@@ -92,6 +118,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "diet.dos": "Good Foods ✓",
     "diet.donts": "Avoid These ✗",
     "diet.tip": "Tip",
+    "diet.allergyPreferences": "Any allergic preferences?",
+    "diet.noMatchingFoods": "No matching foods for selected allergy preferences.",
+    
+    // Processing
+    "processing.title": "Checking your health…",
+    "processing.subtitle": "This will only take a moment",
+    "processing.neckResult": "Neck Scan Result",
+    "processing.neckScore": "Neck Score",
+    "processing.swellingLevel": "Swelling Level",
     
     // PHC
     "phc.title": "Health Centers Near You",
@@ -127,6 +162,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "history.improving": "Improving",
     "history.stable": "Stable",
     "history.declining": "Needs attention",
+    "history.clearHistory": "Clear History",
+    "history.confirmClear": "Are you sure you want to clear all history?",
+    "history.risk.low": "Low Risk",
+    "history.risk.medium": "Moderate Risk",
+    "history.risk.high": "High Risk",
     
     // Settings
     "settings.title": "Settings",
@@ -139,6 +179,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "settings.faq2q": "Is my data safe?",
     "settings.faq2a": "Yes. Your data is encrypted and stored securely.",
     "settings.logout": "Logout",
+    "settings.logoutConfirm": "Are you sure you want to logout?",
+    "settings.years": "years",
     
     // Nav
     "nav.home": "Home",
@@ -148,8 +190,107 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Common
     "common.back": "Back",
+    "common.resetScreening": "Reset Screening Data",
+    
+    // Index/Blank App
+    "index.welcome": "Welcome to Your Blank App",
+    "index.startBuilding": "Start building your amazing project here!",
+    
+    // NotFound
+    "notFound.title": "404",
+    "notFound.message": "Oops! Page not found",
+    "notFound.returnHome": "Return to Home",
+    
+    // Home - Cold Warning
+    "home.coldWarning": "Screening is temporarily unavailable until your cold or cough is resolved.",
+    
+    // NeckScan extra
+    "neck.thyroidArea": "↓ Thyroid Area ↓",
+    "neck.needsHttps": "Camera needs HTTPS or localhost. Open the app on localhost.",
+    "neck.notSupported": "Camera API not supported in this browser.",
+    "neck.tapRetry": "Tap Retry Camera to start preview.",
+    "neck.permissionDenied": "Camera permission denied. Please allow camera access.",
+    "neck.noDevice": "No camera device found on this system.",
+    "neck.unableToAccess": "Unable to access camera. Please check browser camera settings.",
+    "neck.on": "ON",
+    "neck.off": "OFF",
+    "neck.analyzing": "Analyzing neck image...",
+    "neck.retryCamera": "Retry Camera",
+    
+    // PHC Support extra
+    "phc.mapComingSoon": "Map view coming soon",
+    "phc.clinicName": "District PHC - Warangal",
+    "phc.clinicAddress": "Main Road, Near Bus Stand, Warangal - 506002",
+    
+    // Risk Score extra
+    "risk.completeAll": "Complete all tests to view final result",
+    "risk.symptomsTest": "Symptoms Test",
+    "risk.voiceTestName": "Voice Test",
+    "risk.neckScanName": "Neck Scan",
+    "risk.completeSymptoms": "Complete Symptoms Test",
+    "risk.completeVoice": "Complete Voice Test",
+    "risk.completeNeck": "Complete Neck Scan",
+    
+    // Voice Test extra
+    "voice.analysisTimeout": "Analysis timed out. Please try again.",
+    "voice.serverUnavailable": "Unable to reach analysis server. Please make sure backend is running.",
+    "voice.analyzingVoice": "Analyzing voice... this may take a moment.",
+    
+    // PHC Nearby extra
+    "phcNearby.distance": "Distance",
+    
+    // Symptom Assistant
+    "assistant.title": "Symptom Assistant",
+    "assistant.subtitle": "AI voice health assistant",
+    "assistant.startConversation": "Start Conversation",
+    "assistant.tapToStart": "Tap the button below to start your health screening conversation",
+    "assistant.listening": "Listening...",
+    "assistant.speaking": "Assistant speaking...",
+    "assistant.waiting": "Tap Start to begin",
+    "assistant.locked": "Screening locked",
+    "assistant.stopped": "Conversation stopped",
+    "assistant.returnHome": "Return to Home",
+    "assistant.tryAgain": "Try Again",
+    "assistant.recognized": "Recognized",
+    "assistant.retry": "Retry",
+    "assistant.intro": "Hello. Before we begin the thyroid screening, I need to ask a few quick health questions.",
+    "assistant.yesNoInstruction": "Please answer only in Yes or No.",
+    "assistant.safetyQuestion": "Do you currently have cold or cough?",
+    "assistant.coldCoughWarning": "Voice-based thyroid screening may not be accurate during cold or cough. Please return once your symptoms are gone.",
+    "assistant.lockMessage": "Screening is temporarily unavailable until your cold or cough is resolved.",
+    "assistant.fallbackMessage": "I didn't catch that. Please say Yes or No.",
+    "assistant.finalUnclearMessage": "We are unable to understand your response. Please try again later.",
+    "assistant.microphoneDenied": "Microphone permission denied. Please allow microphone access.",
+    "assistant.speechNotSupported": "Speech recognition is not supported in this browser.",
+    "assistant.unableToRecognize": "Unable to recognize speech. Please try again later.",
+    "assistant.couldNotStart": "Could not start microphone listening. Please try again.",
+    "assistant.question.fatigue": "Do you often feel unexplained fatigue?",
+    "assistant.question.weight_change": "Have you experienced sudden weight gain or weight loss?",
+    "assistant.question.hair_fall": "Are you experiencing unusual hair fall?",
+    "assistant.question.temperature_sensitivity": "Do you feel unusually sensitive to cold or heat?",
+    "assistant.question.irregular_cycles": "Do you have irregular menstrual cycles?",
   },
-  te: {
+  te: {    // Login
+    "login.title": "మీ ప్రొఫైల్ సృష్టించండి",
+    "login.subtitle": "మీ వ్యక్తిగత థైరాయిడ్ ఆరోగ్య సహచరుడు",
+    "login.name": "పూర్తి పేరు",
+    "login.namePlaceholder": "మీ పేరు నమోదు చేయండి",
+    "login.nameRequired": "పేరు అవసరం",
+    "login.nameMinLength": "పేరు కనీసం 2 అక్షరాలు ఉండాలి",
+    "login.phone": "ఫోన్ నంబర్",
+    "login.phonePlaceholder": "10 అంకెల మొబైల్ నంబర్",
+    "login.phoneRequired": "ఫోన్ నంబర్ అవసరం",
+    "login.phoneInvalid": "దయచేసి చెల్లుబాటు అయ్యే 10 అంకెల ఫోన్ నంబర్ నమోదు చేయండి",
+    "login.age": "వయసు",
+    "login.agePlaceholder": "మీ వయసు నమోదు చేయండి",
+    "login.ageRequired": "వయసు అవసరం",
+    "login.ageInvalid": "దయచేసి చెల్లుబాటు అయ్యే వయసు నమోదు చేయండి (1-120)",
+    "login.email": "ఇమెయిల్",
+    "login.emailPlaceholder": "your@email.com",
+    "login.optional": "ఐచ్ఛికం",
+    "login.continue": "కొనసాగించండి",
+    "login.loading": "దయచేసి వేచి ఉండండి...",
+    "login.privacyNote": "మీ సమాచారం సురక్షితంగా ఉంటుంది మరియు మీ అనుభవాన్ని వ్యక్తిగతం చేయడానికి మాత్రమే ఉపయోగించబడుతుంది.",
     // Splash
     "splash.tagline": "మీ ఫోన్ నుండే ముందస్తు థైరాయిడ్ సంరక్షణ",
     
@@ -203,6 +344,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "risk.high": "ఎక్కువ ప్రమాదం — దయచేసి ఆరోగ్య కేంద్రాన్ని సందర్శించండి",
     "risk.nextSteps": "పూర్తి నివేదిక చూడండి",
     "risk.score": "స్కోర్",
+    "risk.highWarning": "⚠️ అధిక థైరాయిడ్ ప్రమాదం గుర్తించబడింది. సరైన రోగనిర్ధారణ కోసం సమీపంలోని ఆరోగ్య కేంద్రాన్ని సందర్శించాలని మే సిఫారసు చేస్తున్నాం.",
+    "risk.findNearbyClinics": "సమీపంలోని క్లినిక్‌లను కనుగొనండి",
+    "risk.geolocationNotSupported": "ఈ బ్రౌజర్ జియోలొకేషన్‌ను సపోర్ట్ చేయదు.",
+    "risk.geolocationError": "మీ స్థానాన్ని పొందడం సాధ్యం కాలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.",
 
     // Health Report
     "report.title": "ఆరోగ్య సారాంశ నివేదిక",
@@ -240,6 +385,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "diet.dos": "మంచి ఆహారాలు ✓",
     "diet.donts": "ఇవి తగ్గించండి ✗",
     "diet.tip": "సలహా",
+    "diet.allergyPreferences": "అలర్జీ ప్రాధాన్యతలు ఏమైనా ఉన్నాయా?",
+    "diet.noMatchingFoods": "ఎంచుకున్న అలర్జీ ప్రాధాన్యతలకు సరిపోలే ఆహారాలు లేవు.",
+    
+    // Processing
+    "processing.neckResult": "మెడ స్కాన్ ఫలితం",
+    "processing.neckScore": "మెడ స్కోర్",
+    "processing.swellingLevel": "వాపు స్థాయి",
     
     // PHC
     "phc.title": "మీ సమీపంలోని ఆరోగ్య కేంద్రాలు",
@@ -275,6 +427,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "history.improving": "మెరుగుపడుతోంది",
     "history.stable": "స్థిరంగా ఉంది",
     "history.declining": "శ్రద్ధ అవసరం",
+    "history.clearHistory": "చరిత్ర తొలగించండి",
+    "history.confirmClear": "మీరు మొత్తం చరిత్రను తొలగించాలనుకుంటున్నారా?",
+    "history.risk.low": "తక్కువ ప్రమాదం",
+    "history.risk.medium": "మధ్యస్థ ప్రమాదం",
+    "history.risk.high": "అధిక ప్రమాదం",
     
     // Settings
     "settings.title": "సెట్టింగ్‌లు",
@@ -287,6 +444,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "settings.faq2q": "నా డేటా సురక్షితమా?",
     "settings.faq2a": "అవును. మీ డేటా ఎన్‌క్రిప్ట్ చేయబడి సురక్షితంగా నిల్వ చేయబడుతుంది.",
     "settings.logout": "లాగ్ అవుట్",
+    "settings.logoutConfirm": "మీరు ఖచ్చితంగా లాగ్ అవుట్ అవ్వాలనుకుంటున్నారా?",
+    "settings.years": "సంవత్సరాలు",
     
     // Nav
     "nav.home": "హోమ్",
@@ -296,5 +455,84 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Common
     "common.back": "వెనుకకు",
+    "common.resetScreening": "స్క్రీనింగ్ డేటా రీసెట్ చేయండి",
+    
+    // Index/Blank App
+    "index.welcome": "మీ ఖాళీ యాప్‌కు స్వాగతం",
+    "index.startBuilding": "మీ అద్భుతమైన ప్రాజెక్ట్‌ను ఇక్కడ నిర్మించడం ప్రారంభించండి!",
+    
+    // NotFound
+    "notFound.title": "404",
+    "notFound.message": "అయ్యో! పేజీ కనుగొనబడలేదు",
+    "notFound.returnHome": "హోమ్‌కు తిరిగి వెళ్ళండి",
+    
+    // Home - Cold Warning
+    "home.coldWarning": "మీ జలుబు లేదా దగ్గు తగ్గే వరకు స్క్రీనింగ్ తాత్కాలికంగా అందుబాటులో లేదు.",
+    
+    // NeckScan extra
+    "neck.thyroidArea": "↓ థైరాయిడ్ ప్రాంతం ↓",
+    "neck.needsHttps": "కెమెరాకు HTTPS లేదా localhost అవసరం. యాప్ localhost లో తెరవండి.",
+    "neck.notSupported": "ఈ బ్రౌజర్‌లో కెమెరా API సపోర్ట్ చేయబడదు.",
+    "neck.tapRetry": "ప్రివ్యూ ప్రారంభించడానికి కెమెరా మళ్ళీ ప్రయత్నించు నొక్కండి.",
+    "neck.permissionDenied": "కెమెరా అనుమతి తిరస్కరించబడింది. దయచేసి కెమెరా యాక్సెస్ అనుమతించండి.",
+    "neck.noDevice": "ఈ సిస్టమ్‌లో కెమెరా పరికరం కనుగొనబడలేదు.",
+    "neck.unableToAccess": "కెమెరాను యాక్సెస్ చేయలేకపోయింది. దయచేసి బ్రౌజర్ కెమెరా సెట్టింగ్‌లు తనిఖీ చేయండి.",
+    "neck.on": "ఆన్",
+    "neck.off": "ఆఫ్",
+    "neck.analyzing": "మెడ చిత్రాన్ని విశ్లేషిస్తోంది...",
+    "neck.retryCamera": "కెమెరా మళ్ళీ ప్రయత్నించు",
+    
+    // PHC Support extra
+    "phc.mapComingSoon": "మ్యాప్ వ్యూ త్వరలో వస్తుంది",
+    "phc.clinicName": "జిల్లా PHC - వరంగల్",
+    "phc.clinicAddress": "మెయిన్ రోడ్, బస్ స్టాండ్ సమీపంలో, వరంగల్ - 506002",
+    
+    // Risk Score extra
+    "risk.completeAll": "తుది ఫలితాన్ని చూడటానికి అన్ని పరీక్షలు పూర్తి చేయండి",
+    "risk.symptomsTest": "లక్షణాల పరీక్ష",
+    "risk.voiceTestName": "గొంతు పరీక్ష",
+    "risk.neckScanName": "మెడ స్కాన్",
+    "risk.completeSymptoms": "లక్షణాల పరీక్ష పూర్తి చేయండి",
+    "risk.completeVoice": "గొంతు పరీక్ష పూర్తి చేయండి",
+    "risk.completeNeck": "మెడ స్కాన్ పూర్తి చేయండి",
+    
+    // Voice Test extra
+    "voice.analysisTimeout": "విశ్లేషణ సమయం ముగిసింది. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+    "voice.serverUnavailable": "విశ్లేషణ సర్వర్‌ను చేరుకోలేకపోయింది. బ్యాక్‌ఎండ్ రన్ అవుతుందని నిర్ధారించుకోండి.",
+    "voice.analyzingVoice": "గొంతును విశ్లేషిస్తోంది... కొంత సమయం పట్టవచ్చు.",
+    
+    // PHC Nearby extra
+    "phcNearby.distance": "దూరం",
+    
+    // Symptom Assistant
+    "assistant.title": "లక్షణాల సహాయకుడు",
+    "assistant.subtitle": "AI వాయిస్ ఆరోగ్య సహాయకుడు",
+    "assistant.startConversation": "సంభాషణ ప్రారంభించండి",
+    "assistant.tapToStart": "మీ ఆరోగ్య స్క్రీనింగ్ సంభాషణ ప్రారంభించడానికి క్రింది బటన్ నొక్కండి",
+    "assistant.listening": "వింటోంది...",
+    "assistant.speaking": "సహాయకుడు మాట్లాడుతున్నాడు...",
+    "assistant.waiting": "ప్రారంభించడానికి నొక్కండి",
+    "assistant.locked": "స్క్రీనింగ్ లాక్ చేయబడింది",
+    "assistant.stopped": "సంభాషణ ఆపివేయబడింది",
+    "assistant.returnHome": "హోమ్‌కు తిరిగి వెళ్ళండి",
+    "assistant.tryAgain": "మళ్ళీ ప్రయత్నించండి",
+    "assistant.recognized": "గుర్తించబడింది",
+    "assistant.retry": "మళ్ళీ ప్రయత్నించు",
+    "assistant.intro": "నమస్తే. థైరాయిడ్ స్క్రీనింగ్ ప్రారంభించే ముందు, నేను కొన్ని త్వరిత ఆరోగ్య ప్రశ్నలు అడగాలి.",
+    "assistant.yesNoInstruction": "దయచేసి అవును లేదా కాదు అని మాత్రమే సమాధానం ఇవ్వండి.",
+    "assistant.safetyQuestion": "మీకు ప్రస్తుతం జలుబు లేదా దగ్గు ఉందా?",
+    "assistant.coldCoughWarning": "జలుబు లేదా దగ్గు సమయంలో వాయిస్-ఆధారిత థైరాయిడ్ స్క్రీనింగ్ ఖచ్చితంగా ఉండకపోవచ్చు. మీ లక్షణాలు తగ్గిన తర్వాత తిరిగి రండి.",
+    "assistant.lockMessage": "మీ జలుబు లేదా దగ్గు తగ్గే వరకు స్క్రీనింగ్ తాత్కాలికంగా అందుబాటులో లేదు.",
+    "assistant.fallbackMessage": "నేను అది అర్థం చేసుకోలేకపోయాను. దయచేసి అవును లేదా కాదు అని చెప్పండి.",
+    "assistant.finalUnclearMessage": "మీ ప్రతిస్పందనను అర్థం చేసుకోలేకపోయాం. దయచేసి తర్వాత మళ్ళీ ప్రయత్నించండి.",
+    "assistant.microphoneDenied": "మైక్రోఫోన్ అనుమతి తిరస్కరించబడింది. దయచేసి మైక్రోఫోన్ యాక్సెస్ అనుమతించండి.",
+    "assistant.speechNotSupported": "ఈ బ్రౌజర్‌లో స్పీచ్ రికగ్నిషన్ సపోర్ట్ చేయబడదు.",
+    "assistant.unableToRecognize": "స్పీచ్ గుర్తించలేకపోయింది. దయచేసి తర్వాత మళ్ళీ ప్రయత్నించండి.",
+    "assistant.couldNotStart": "మైక్రోఫోన్ వినడం ప్రారంభించలేకపోయింది. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+    "assistant.question.fatigue": "మీకు తరచుగా వివరించలేని అలసట అనిపిస్తుందా?",
+    "assistant.question.weight_change": "మీరు అకస్మాత్తుగా బరువు పెరగడం లేదా తగ్గడం అనుభవించారా?",
+    "assistant.question.hair_fall": "మీకు అసాధారణ జుట్టు రాలడం జరుగుతోందా?",
+    "assistant.question.temperature_sensitivity": "మీకు చలి లేదా వేడికి అసాధారణంగా సున్నితంగా అనిపిస్తుందా?",
+    "assistant.question.irregular_cycles": "మీకు క్రమరహిత రుతు చక్రాలు ఉన్నాయా?",
   },
 };
